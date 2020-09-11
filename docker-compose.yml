@@ -1,0 +1,36 @@
+version: "3.8"
+
+networks:
+  cse_160_network:
+
+services:
+    project-1:
+        image: ucmercedandeslab/tinyos_debian
+        init: true
+        container_name: project-1
+        stdin_open: true # docker run -i
+        tty: true # docker run -t
+        command: "bash"
+        networks: 
+          cse_160_network:
+            aliases:
+              - "project 1"
+        volumes:
+            - .:/home
+        logging:
+          driver: "json-file"
+          options:
+            max-size: "200k"
+            max-file: "10"
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost"]
+          interval: 1m30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+        labels:
+          course: cse-160
+          maintainer_name: "Adrian Darian"
+          maintainer_email: adarian@ucmerced.edu
+          version: "0.1.0"
+        
