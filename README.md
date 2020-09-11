@@ -5,6 +5,20 @@ on what is expected will be provided as the school year continues.
 
 ## General Information
 
+### Booting up TinyOS and Running
+
+#### Start the OS
+
+```bash
+docker-compose up -d --build
+```
+
+#### Open Interactive Shell
+
+```bash
+docker exec -it project-1 /bin/bash
+```
+
 ### Data Structures
 
 `/dataStructures/interfaces/`
