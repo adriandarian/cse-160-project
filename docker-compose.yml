@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3.3"
 
 networks:
   cse_160_network:
@@ -6,7 +6,6 @@ networks:
 services:
     project-1:
         image: ucmercedandeslab/tinyos_debian
-        init: true
         container_name: project-1
         stdin_open: true # docker run -i
         tty: true # docker run -t
@@ -27,10 +26,11 @@ services:
           interval: 1m30s
           timeout: 10s
           retries: 3
-          start_period: 40s
         labels:
           course: cse-160
-          maintainer_name: "Adrian Darian"
-          maintainer_email: adarian@ucmerced.edu
+          maintainer_one_name: "Adrian Darian"
+          maintainer_one_email: adarian@ucmerced.edu
+          maintainer_two_name: "Busher Bridi"
+          maintainer_two_email: bbridi@ucmerced.edu
           version: "0.1.0"
         
