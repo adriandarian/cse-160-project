@@ -18,16 +18,16 @@ implementation {
     components Node;
     components new AMReceiverC(AM_PACK) as GeneralReceive;
 
-    Node -> MainC.Boot;
+    Node->MainC.Boot;
 
-    Node.Receive -> GeneralReceive;
+    Node.Receive->GeneralReceive;
 
     components ActiveMessageC;
-    Node.AMControl -> ActiveMessageC;
+    Node.AMControl->ActiveMessageC;
 
     components new SimpleSendC(AM_PACK);
-    Node.Sender -> SimpleSendC;
+    Node.Sender->SimpleSendC;
 
     components CommandHandlerC;
-    Node.CommandHandler -> CommandHandlerC;
+    Node.CommandHandler->CommandHandlerC;
 }

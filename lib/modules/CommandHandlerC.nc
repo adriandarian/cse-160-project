@@ -16,15 +16,15 @@ implementation{
     components CommandHandlerP;
     CommandHandler = CommandHandlerP;
     components new AMReceiverC(AM_COMMANDMSG) as CommandReceive;
-    CommandHandlerP.Receive -> CommandReceive;
+    CommandHandlerP.Receive->CommandReceive;
 
-   //Lists
+   // Lists
    components new PoolC(message_t, 20);
    components new QueueC(message_t*, 20);
 
-   CommandHandlerP.Pool -> PoolC;
-   CommandHandlerP.Queue -> QueueC;
+   CommandHandlerP.Pool->PoolC;
+   CommandHandlerP.Queue->QueueC;
 
    components ActiveMessageC;
-   CommandHandlerP.Packet -> ActiveMessageC;
+   CommandHandlerP.Packet->ActiveMessageC;
 }

@@ -12,18 +12,18 @@ implementation{
    components RandomC as Random;
    components new AMSenderC(channel);
 
-   //Timers
-   SimpleSendP.sendTimer -> sendTimer;
-   SimpleSendP.Random -> Random;
+   // Timers
+   SimpleSendP.sendTimer->sendTimer;
+   SimpleSendP.Random->Random;
 
-   SimpleSendP.Packet -> AMSenderC;
-   SimpleSendP.AMPacket -> AMSenderC;
-   SimpleSendP.AMSend -> AMSenderC;
+   SimpleSendP.Packet->AMSenderC;
+   SimpleSendP.AMPacket->AMSenderC;
+   SimpleSendP.AMSend->AMSenderC;
 
-   //Lists
+   // Lists
    components new PoolC(sendInfo, 20);
    components new QueueC(sendInfo*, 20);
 
-   SimpleSendP.Pool -> PoolC;
-   SimpleSendP.Queue -> QueueC;
+   SimpleSendP.Pool->PoolC;
+   SimpleSendP.Queue->QueueC;
 }

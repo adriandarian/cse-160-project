@@ -40,12 +40,11 @@ implementation{
       // we can ignore it.
       if (call sendTimer.isRunning() == FALSE) {
           // A random element of delay is included to prevent congestion.
-         call sendTimer.startOneShot((call Random.rand16() %300));
+         call sendTimer.startOneShot((call Random.rand16() % 300));
       }
    }
 
-   // This is a wrapper around the am sender, that adds queuing and delayed
-   // sending
+   // This is a wrapper around the am sender, that adds queuing and delayed sending
    command error_t SimpleSend.send(pack msg, uint16_t dest) {
        // First we check to see if we have room in our queue. Since TinyOS is
        // designed for embedded systems, there is no dynamic memory. This forces
@@ -84,13 +83,11 @@ implementation{
          info = call Queue.head();
 
          // Attempt to send it.
-         if (SUCCESS == send(info->src,info->dest, &(info->packet))) {
-            //Release resources used if the attempt was successful
+         if (SUCCESS == send(info->src, info->dest, &(info->packet))) {
+            // Release resources used if the attempt was successful
             call Queue.dequeue();
             call Pool.put(info);
          }
-
-
       }
 
       // While the queue is not empty, we should be re running this task.
@@ -149,7 +146,7 @@ implementation{
    // This event occurs once the message has finished sending. We can attempt
    // to send again at that point.
    event void AMSend.sendDone(message_t* msg, error_t error) {
-      //Clear Flag, we can send again.
+      // Clear Flag, we can send again.
       if (&pkt == msg) {
          busy = FALSE;
          postSendTask();

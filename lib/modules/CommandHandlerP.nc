@@ -43,7 +43,7 @@ implementation{
             buff = (uint8_t*) msg->payload;
             commandID = msg->id;
 
-            //Find out which command was called and call related command
+            // Find out which command was called and call related command
             switch(commandID) {
             // A ping will have the destination of the packet as the first
             // value and the string in the remainder of the payload
@@ -84,7 +84,7 @@ implementation{
             call Pool.put(raw_msg);
         }
 
-        if (! call Queue.empty()) {
+        if (!call Queue.empty()) {
             post processCommand();
         }
     }

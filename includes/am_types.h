@@ -5,7 +5,7 @@
 #define __AM_TYPES_H__
 
 enum{
-    AM_FLOODING=10
+    AM_FLOODING = 10
 };
 
 #endif

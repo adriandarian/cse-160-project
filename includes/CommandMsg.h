@@ -19,7 +19,7 @@ typedef nx_struct CommandMsg{
 }CommandMsg;
 
 enum{
-	AM_COMMANDMSG=99
+	AM_COMMANDMSG = 99
 };
 
 #endif
