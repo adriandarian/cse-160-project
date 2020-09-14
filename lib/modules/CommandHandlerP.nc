@@ -54,7 +54,7 @@ implementation{
 
             case CMD_NEIGHBOR_DUMP:
                 dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
-                signal CommandHandler.printNeighbors();
+                signal CommandHandler.printNeighbors(msg->dest);
                 break;
 
             case CMD_LINKSTATE_DUMP:
