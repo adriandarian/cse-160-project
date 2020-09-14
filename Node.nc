@@ -22,23 +22,27 @@ module Node{
    uses interface SimpleSend as Sender;
 
    uses interface CommandHandler;
+
+   uses interface discoverNeighbor;
 }
 
 implementation{
    pack sendPackage;
 
    // Prototypes
-   void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
+   //Moved this to packet.h so it can be called for other modules
+   //void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t Protocol, uint16_t seq, uint8_t *payload, uint8_t length);
 
    event void Boot.booted() {
       call AMControl.start();
-
       dbg(GENERAL_CHANNEL, "Booted\n");
+      
    }
 
    event void AMControl.startDone(error_t err) {
       if (err == SUCCESS) {
          dbg(GENERAL_CHANNEL, "Radio On\n");
+         call discoverNeighbor.start();
       } else {
          // Retry until successful
          call AMControl.start();
@@ -94,12 +98,5 @@ implementation{
 
    event void CommandHandler.setAppClient(){}
 
-   void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length){
-      Package->src = src;
-      Package->dest = dest;
-      Package->TTL = TTL;
-      Package->seq = seq;
-      Package->protocol = protocol;
-      memcpy(Package->payload, payload, length);
-   }
+
 }
