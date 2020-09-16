@@ -18,9 +18,13 @@ module NeighborDiscoveryP {
 }
 
 implementation {
-
+    
     command error_t NeighborDiscovery.start() {      // print debug indicating that import was successful for now
-        dbg(GENERAL_CHANNEL, "Neighbor Discovery works\n");
+        pack package;
+        uint8_t payload = 123;
+        dbg(GENERAL_CHANNEL,"neighbor discovery works\n");
+        makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_PING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
+        call SimpleSend.send(package, AM_BROADCAST_ADDR);
     }
 
     command error_t NeighborDiscovery.print() {
