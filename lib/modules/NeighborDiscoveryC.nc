@@ -11,4 +11,6 @@ configuration NeighborDiscoveryC {
 implementation{
     components NeighborDiscoveryP;
     NeighborDiscovery = NeighborDiscoveryP;
+    components new SimpleSendC(AM_PACK);
+    NeighborDiscoveryP.SimpleSend->SimpleSendC;
 }
