@@ -25,8 +25,19 @@ implementation {
         dbg(GENERAL_CHANNEL,"neighbor discovery works\n");
         makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_PING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
+        
     }
-
+    command void NeighborDiscovery.pingHandle(pack *package){
+        //when ping from neighbor recived:
+        if(package->protocol == PROTOCOL_PING){
+            pack reply;
+            uint8_t payload = package->payload;
+            makePack(&reply,TOS_NODE_ID,0,1,PROTOCOL_PINGREPLY,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
+            //send the reply:
+            call SimpleSend.send(reply,package->src);
+            dbg(GENERAL_CHANNEL,"reply sent\n");
+        }
+    }
     command error_t NeighborDiscovery.print() {
 
     }
