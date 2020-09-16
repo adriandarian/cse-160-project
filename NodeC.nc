@@ -31,6 +31,6 @@ implementation {
     components CommandHandlerC;
     Node.CommandHandler->CommandHandlerC;
 
-    components discoverNeighborC;
-    Node.discoverNeighbor->discoverNeighborC;
+    components NeighborDiscoveryC;
+    Node.NeighborDiscovery->NeighborDiscoveryC;
 }

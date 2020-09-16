@@ -23,7 +23,7 @@ module Node{
 
    uses interface CommandHandler;
 
-   uses interface discoverNeighbor;
+   uses interface NeighborDiscovery;
 }
 
 implementation{
@@ -36,10 +36,9 @@ implementation{
    }
 
    event void AMControl.startDone(error_t err) {
-      dbg(GENERAL_CHANNEL, "Broadcast address: %x\n", AM_BROADCAST_ADDR);
       if (err == SUCCESS) {
          dbg(GENERAL_CHANNEL, "Radio On\n");
-         call discoverNeighbor.start();
+         call NeighborDiscovery.start();
       } else {
          // Retry until successful
          call AMControl.start();
@@ -53,12 +52,6 @@ implementation{
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
       dbg(GENERAL_CHANNEL, "Packet Received\n");
-
-      // Check the package size before execution
-      dbg(GENERAL_CHANNEL, "len: %u, pack: %u\n", len, sizeof(pack));
-
-      // Log the msg
-      dbg(GENERAL_CHANNEL, "Package Message: %s\n", msg);
       
       if (len == sizeof(pack)) {
          pack* myMsg = (pack*) payload;
