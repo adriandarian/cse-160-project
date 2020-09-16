@@ -15,15 +15,14 @@
 
 module Node{
    uses interface Boot;
-
    uses interface SplitControl as AMControl;
    uses interface Receive;
-
    uses interface SimpleSend as Sender;
-
    uses interface CommandHandler;
-
    uses interface NeighborDiscovery;
+   uses interface Flooding;
+   uses interface List<uint16_t> as NeighborList;
+   uses interface Hashmap<NeighborList> as RoutingTable;
 }
 
 implementation{
@@ -32,7 +31,6 @@ implementation{
    event void Boot.booted() {
       call AMControl.start();
       dbg(GENERAL_CHANNEL, "Booted\n");
-      
    }
 
    event void AMControl.startDone(error_t err) {
@@ -69,15 +67,21 @@ implementation{
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
       dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
-      makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, 0, 10, payload, PACKET_MAX_PAYLOAD_SIZE);
-      call Sender.send(sendPackage, destination);
+
+      if (!call RoutingTable.isEmpty() || !call RoutingTable.contains(destination)) {
+         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+         call Flooding.send(sendPackage, destination);
+      } else {
+         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+         call Sender.send(sendPackage, call RoutingTable.get(destination));
+      } 
    }
 
    event void CommandHandler.printNeighbors(uint16_t node) {
       dbg(GENERAL_CHANNEL, "neighbors: %d\n", node);
    }
 
-   event void CommandHandler.printRouteTable(){}
+   event void CommandHandler.printRouteTable() {}
 
    event void CommandHandler.printLinkState(){}
 

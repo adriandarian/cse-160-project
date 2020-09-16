@@ -6,7 +6,7 @@
 
 #include "../../includes/channels.h" // For printing debug statements
 #include "../../includes/packet.h"
-#include "../../includes/protocol.h" // For making our own discoverNeighbor protocol
+#include "../../includes/protocol.h"
 
 module NeighborDiscoveryP {
     provides interface NeighborDiscovery;
@@ -20,7 +20,7 @@ module NeighborDiscoveryP {
 implementation {
 
     command error_t NeighborDiscovery.start() {      // print debug indicating that import was successful for now
-        dbg(GENERAL_CHANNEL,"neighbor discovery works\n");
+        dbg(GENERAL_CHANNEL, "Neighbor Discovery works\n");
     }
 
     command error_t NeighborDiscovery.print() {

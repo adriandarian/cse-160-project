@@ -6,17 +6,20 @@
 
 #include "../../includes/channels.h" // For printing debug statements
 #include "../../includes/packet.h"
-#include "../../includes/protocol.h" // For making our own discoverNeighbor protocol
+#include "../../includes/protocol.h"
 
 module FloodingP {
     provides interface Flooding;
 
     // Interfaces to be used:
-    uses interface SimpleSend; // For sending messages to potential neighbors
+    uses interface SimpleSend as Sender;
 }
 
 implementation {
-    command error_t Flooding.start() { // print debug indicating that import was successful for now
-        dbg(GENERAL_CHANNEL,"Flooding works\n");
+    uint16_t sequenceNumber = 0;
+
+    command error_t Flooding.send(pack package, uint16_t destination) { 
+        package.seq = sequenceNumber++;
+        call Sender.send(package, AM_BROADCAST_ADDR);
     }
 }
