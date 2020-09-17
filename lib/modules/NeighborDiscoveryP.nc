@@ -56,11 +56,12 @@ implementation {
         if(package->protocol == PROTOCOL_PING && package-> TTL >0){
             //Use the same package in the reply, so decrease the TTL by 1 and set the source to this TOS_NODE_ID
             //Also change the protocol to a ping reply so when the neighboring nodes recive it they dont forward it
+            uint16_t dest = package->src;
             package->protocol == PROTOCOL_PINGREPLY;
             package->TTL--; //is this causing problems? Try explicitly redefinition:
             package->src = TOS_NODE_ID;
             //broadcast the modified package:
-            call SimpleSend.send(*package,AM_BROADCAST_ADDR);
+            call SimpleSend.send(*package, dest);
             dbg(GENERAL_CHANNEL,"Sent reply\n");
         }
         //Check if neighbors replied by checking protocol:
@@ -76,12 +77,16 @@ implementation {
         uint32_t *keyPtr = call Hashmap.getKeys();
         for(i = 0; i < tableSize; i++){
             val = *keyPtr;
-            dbg(GENERAL_CHANNEL, "My neighbors: %d ",val);
+            dbg(GENERAL_CHANNEL, "My neighbors: %d\n ",val+i); //val+i = val[i] (pointer arthmatic)
 
         }
         dbg(GENERAL_CHANNEL,"\n");
         
     }
+    //Need to implement timer so that neighbor table is updated
+    //event void updateNeighborTable.fired(){
+
+    //}
 
     command error_t NeighborDiscovery.getNeighbors() {}
 }
