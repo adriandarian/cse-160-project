@@ -52,8 +52,35 @@ implementation {
         }
     }
     **/
+    command void NeighborDiscovery.pingHandle(pack * package){
+        if(package->protocol == PROTOCOL_PING && package-> TTL >0){
+            //Use the same package in the reply, so decrease the TTL by 1 and set the source to this TOS_NODE_ID
+            //Also change the protocol to a ping reply so when the neighboring nodes recive it they dont forward it
+            package->protocol == PROTOCOL_PINGREPLY;
+            package->TTL--; //is this causing problems? Try explicitly redefinition:
+            package->src = TOS_NODE_ID;
+            //broadcast the modified package:
+            call SimpleSend.send(*package,AM_BROADCAST_ADDR);
+            dbg(GENERAL_CHANNEL,"Sent reply\n");
+        }
+        //Check if neighbors replied by checking protocol:
+        else if(package->protocol = PROTOCOL_PINGREPLY){
+            dbg(GENERAL_CHANNEL,"Neighbor discovred %d\n",package->src);
+            call Hashmap.insert(package->src,package->src);
+        }
+    }
     command error_t NeighborDiscovery.print() {
+        uint8_t i;
+        uint8_t val;
+        uint8_t tableSize = call Hashmap.size();
+        uint32_t *keyPtr = call Hashmap.getKeys();
+        for(i = 0; i < tableSize; i++){
+            val = *keyPtr;
+            dbg(GENERAL_CHANNEL, "My neighbors: %d ",val);
 
+        }
+        dbg(GENERAL_CHANNEL,"\n");
+        
     }
 
     command error_t NeighborDiscovery.getNeighbors() {}

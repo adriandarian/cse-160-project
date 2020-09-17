@@ -77,6 +77,7 @@ implementation{
 
    event void CommandHandler.printNeighbors(uint16_t node) {
       dbg(GENERAL_CHANNEL, "neighbors: %d\n", node);
+      call NeighborDiscovery.print();
    }
 
    event void CommandHandler.printRouteTable(){}
