@@ -12,29 +12,69 @@ module FloodingP {
     provides interface Flooding;
 
     // Interfaces to be used:
-    uses interface Receive as Receiver;
     uses interface SimpleSend as Sender;
+    uses interface List<pack> as FloodingList;
 }
 
 implementation {
     uint16_t sequenceNumber = 0;
+    
+    bool searchForPackage(pack *package) {
+        uint16_t i = 0, FloodingListSize = call FloodingList.size();
+        while (i < FloodingListSize) {
+          pack temporaryPackage = call FloodingList.get(i);
+
+          if (temporaryPackage.src == package->src && temporaryPackage.dest == package->dest && temporaryPackage.seq == package->seq) {
+            return TRUE;
+          }
+
+          i++;
+        }
+
+        return FALSE;
+    };
+
+    
+    void validateFloodingList(pack *package){
+        if (call FloodingList.size() == 64) {
+            call FloodingList.popfront();
+        }
+
+        call FloodingList.pushback(*package);
+    }
+
+    command void Flooding.printFloodList() {
+        uint16_t i = 0;
+        if (!call FloodingList.isEmpty()) {
+            while (i < call FloodingList.size()) {
+                pack FloodingListElement = (pack) call FloodingList.get(i);
+                logPack(&FloodingListElement);
+                dbg(LOG_CHANNEL, "\n");
+                i++;
+            }
+        }
+    }
 
     command error_t Flooding.send(pack package, uint16_t destination) { 
         package.seq = sequenceNumber++;
-        call Sender.send(package, destination);
+        package.TTL -= 1;
+        call Sender.send(package, AM_BROADCAST_ADDR);
     }
 
-    event message_t* Receiver.receive(message_t* msg, void* payload, uint8_t len) {
-        if (len == sizeof(pack)) {
-            pack* floodMsg = (pack*) payload;
+    command void Flooding.pingHandle(pack *package) {
+        if(package->dest == TOS_NODE_ID) {
+            dbg(FLOODING_CHANNEL, "This is the Destination from: %d to %d\n", package->src, package->dest);
+            dbg(FLOODING_CHANNEL, "Package Payload: %s\n", package->payload);
 
-            if (floodMsg->TTL == 0) {
-                return msg;
-            } else if(TOS_NODE_ID == floodMsg->dest) {
-                dbg(FLOODING_CHANNEL, "This is the Destination from: %d to %d\n", floodMsg->src, floodMsg->dest);
+            if (package->protocol == PROTOCOL_PING && package->TTL > 0) {
+                dbg(FLOODING_CHANNEL, "Going to ping from: %d to %d with seq %d\n", package->dest, package->src, package->seq);
+
+                call Sender.send(*package, AM_BROADCAST_ADDR);
+
+                validateFloodingList(package);
+            } else if (package->protocol == PROTOCOL_PINGREPLY) {
+                dbg(FLOODING_CHANNEL, "Received a Ping Reply from %d\n", package->src);
             }
-
-            return msg;
         }
     }
 }

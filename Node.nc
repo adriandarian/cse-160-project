@@ -53,11 +53,15 @@ implementation{
       dbg(GENERAL_CHANNEL, "Packet Received\n");
       
       if (len == sizeof(pack)) {
-         pack* myMsg = (pack*) payload;
-         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
+         pack* message = (pack*) payload;
+         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", message->payload);
 
          // Output the full package being passed through
-         logPack(myMsg);
+         // logPack(message);
+
+         call Flooding.pingHandle(message);
+
+         call Flooding.printFloodList();
 
          return msg;
       }
@@ -69,14 +73,8 @@ implementation{
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
       dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
 
-      if (!call RoutingTable.isEmpty() || !call RoutingTable.contains(destination)) {
-        dest = call RoutingTable.get(destination);
-        ttl = 0;         
-      } 
-
-      makePack(&sendPackage, TOS_NODE_ID, destination, ttl, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-      logPack(&sendPackage);
-      call Flooding.send(sendPackage, dest);
+      makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+      call Flooding.send(sendPackage, destination);
    }
 
    event void CommandHandler.printNeighbors(uint16_t destination) {
@@ -89,15 +87,15 @@ implementation{
 
    event void CommandHandler.printRouteTable() {}
 
-   event void CommandHandler.printLinkState(){}
+   event void CommandHandler.printLinkState() {}
 
-   event void CommandHandler.printDistanceVector(){}
+   event void CommandHandler.printDistanceVector() {}
 
-   event void CommandHandler.setTestServer(){}
+   event void CommandHandler.setTestServer() {}
 
-   event void CommandHandler.setTestClient(){}
+   event void CommandHandler.setTestClient() {}
 
-   event void CommandHandler.setAppServer(){}
+   event void CommandHandler.setAppServer() {}
 
-   event void CommandHandler.setAppClient(){}
+   event void CommandHandler.setAppClient() {}
 }

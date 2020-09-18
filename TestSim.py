@@ -18,6 +18,7 @@ class TestSim:
     # CHANNELS - see includes/channels.h
     COMMAND_CHANNEL = "command"
     GENERAL_CHANNEL = "general"
+    LOG_CHANNEL = "log"
 
     # Project 1
     NEIGHBOR_CHANNEL = "neighbor"
