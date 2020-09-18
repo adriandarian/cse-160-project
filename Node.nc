@@ -59,9 +59,9 @@ implementation{
 
          // Output the full package being passed through
          logPack(myMsg);
-         if(myMsg->protocol == PING){
+         
             call NeighborDiscovery.pingHandle(myMsg);
-         }
+         
          return msg;
       }
 
