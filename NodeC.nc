@@ -16,11 +16,11 @@ configuration NodeC{
 implementation {
     components MainC;
     components Node;
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
 
     Node->MainC.Boot;
 
-    Node.Receive->GeneralReceive;
+    components new AMReceiverC(AM_PACK) as GeneralReceive;
+    Node.Receiver->GeneralReceive;
 
     components ActiveMessageC;
     Node.AMControl->ActiveMessageC;
@@ -38,4 +38,10 @@ implementation {
     // Neighbor Discovery
     components NeighborDiscoveryC;
     Node.NeighborDiscovery->NeighborDiscoveryC;
+
+    components new ListC(uint16_t, 64) as NeighborListC;
+    Node.NeighborList->NeighborListC;
+
+    components new HashmapC(uint16_t, 300) as RoutingTableC;
+    Node.RoutingTable->RoutingTableC;
 }

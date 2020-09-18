@@ -25,11 +25,11 @@ def main():
 
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(20)
-    s.ping(1, 10, "Multi Hops working!")
+    s.ping(1, 9, "Multi Hops working!")
     s.runTime(10)
     s.ping(1, 2, "1->2")
     s.runTime(10)
-    s.neighborDMP(2)
+    s.neighborDMP(3)
     s.runTime(10)
     s.ping(1, 3, "1->3")
     s.runTime(20)

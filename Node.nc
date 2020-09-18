@@ -16,17 +16,18 @@
 module Node{
    uses interface Boot;
    uses interface SplitControl as AMControl;
-   uses interface Receive;
+   uses interface Receive as Receiver;
    uses interface SimpleSend as Sender;
    uses interface CommandHandler;
    uses interface NeighborDiscovery;
    uses interface Flooding;
    uses interface List<uint16_t> as NeighborList;
-   uses interface Hashmap<NeighborList> as RoutingTable;
+   uses interface Hashmap<uint16_t> as RoutingTable;
 }
 
 implementation{
    pack sendPackage;
+   uint16_t ttl = MAX_TTL, dest = AM_BROADCAST_ADDR;
 
    event void Boot.booted() {
       call AMControl.start();
@@ -48,7 +49,7 @@ implementation{
       dbg(GENERAL_CHANNEL, "An Error occurred: %d\n", err);
    }
 
-   event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
+   event message_t* Receiver.receive(message_t* msg, void* payload, uint8_t len) {
       dbg(GENERAL_CHANNEL, "Packet Received\n");
       
       if (len == sizeof(pack)) {
@@ -69,16 +70,21 @@ implementation{
       dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
 
       if (!call RoutingTable.isEmpty() || !call RoutingTable.contains(destination)) {
-         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-         call Flooding.send(sendPackage, destination);
-      } else {
-         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-         call Sender.send(sendPackage, call RoutingTable.get(destination));
+        dest = call RoutingTable.get(destination);
+        ttl = 0;         
       } 
+
+      makePack(&sendPackage, TOS_NODE_ID, destination, ttl, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+      logPack(&sendPackage);
+      call Flooding.send(sendPackage, dest);
    }
 
-   event void CommandHandler.printNeighbors(uint16_t node) {
-      dbg(GENERAL_CHANNEL, "neighbors: %d\n", node);
+   event void CommandHandler.printNeighbors(uint16_t destination) {
+      if (call RoutingTable.contains(destination)) {
+         dbg(NEIGHBOR_CHANNEL, "neighbors: %d\n", destination);
+      } else {
+         dbg(NEIGHBOR_CHANNEL, "unknown destination location at: %d\n", destination);
+      }
    }
 
    event void CommandHandler.printRouteTable() {}
