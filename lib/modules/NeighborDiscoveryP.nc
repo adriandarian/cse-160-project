@@ -26,9 +26,9 @@ implementation {
         pack package;
         uint8_t payload = 84;
         dbg(GENERAL_CHANNEL,"Sending Neighbor ping\n");
-        makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_PING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_NEIGHBORPING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
-        call updateNeighborTable.startPeriodic(500);
+       // call updateNeighborTable.startPeriodic(500);
         
     }
     /** 
@@ -57,11 +57,11 @@ implementation {
     }
     **/
     command void NeighborDiscovery.pingHandle(pack * package){
-        if(package->protocol == PROTOCOL_PING && package-> TTL >0){
+        if(package->protocol == PROTOCOL_NEIGHBORPING && package-> TTL >0){
             //Use the same package in the reply, so decrease the TTL by 1 and set the source to this TOS_NODE_ID
             //Also change the protocol to a ping reply so when the neighboring nodes recive it they dont forward it
             uint16_t dest = package->src;
-            package->protocol == PROTOCOL_PINGREPLY;
+            package->protocol == PROTOCOL_NEIGHBORPINGREPLY;
             package->TTL--; //is this causing problems? Try explicitly redefinition
             package->src = TOS_NODE_ID;
             //broadcast the modified package:
@@ -69,7 +69,7 @@ implementation {
             dbg(GENERAL_CHANNEL,"Sent reply\n");
         }
         //Check if neighbors replied by checking protocol:
-        else if(package->protocol = PROTOCOL_PINGREPLY){
+        else if(package->protocol = PROTOCOL_NEIGHBORPINGREPLY){
             dbg(GENERAL_CHANNEL,"Neighbor discovred %d\n",package->src);
             call Hashmap.insert(package->src,1);
         }
@@ -97,9 +97,9 @@ implementation {
         pack package;
         uint8_t payload = 84;
         dbg(GENERAL_CHANNEL,"Updating neighbor table\n");
-        makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_PING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_NEIGHBORPING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
         // wait some time:
-        //call updateTimer.startOneShot((call Random.rand16() % 300)+100);
+        call updateTimer.startOneShot((call Random.rand16() % 500)+300);
         for(i=0; i < tableSize; i++){
             //val  = call NeighborMap.get(keysPtr[i]);
             call Hashmap.insert(keyPtr[i],call Hashmap.get(keyPtr[i])-1);
