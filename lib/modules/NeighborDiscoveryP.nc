@@ -117,5 +117,7 @@ implementation {
 
     }
 
-    command error_t NeighborDiscovery.getNeighbors() {}
+    command Hashmap<uint16_t> NeighborDiscovery.getNeighbors() {
+        return Hashmap;
+    }
 }
