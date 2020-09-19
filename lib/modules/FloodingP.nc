@@ -13,10 +13,13 @@ module FloodingP {
 
     // Interfaces to be used:
     uses interface SimpleSend; // For sending messages to potential neighbors
+    uses interface Random;
+    uses interface Timer<TMilli> as updateNeighborTable;
+    uses interface NeighborDiscovery;
 }
 
 implementation {
-    command error_t Flooding.start() { // print debug indicating that import was successful for now
-        dbg(GENERAL_CHANNEL,"Flooding works\n");
+    command error_t Flooding.start() { 
+        
     }
 }

@@ -11,10 +11,13 @@ configuration NeighborDiscoveryC {
 implementation{
     components NeighborDiscoveryP;
     NeighborDiscovery = NeighborDiscoveryP;
+
     components new SimpleSendC(AM_PACK);
     NeighborDiscoveryP.SimpleSend->SimpleSendC;
+
     components new HashmapC(uint16_t,100); //assuming less than 100 neighbors
     NeighborDiscoveryP.Hashmap->HashmapC;
+    
     components new TimerMilliC() as updateNeighborTable;
     NeighborDiscoveryP.updateNeighborTable->updateNeighborTable;
 
