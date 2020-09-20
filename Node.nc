@@ -24,6 +24,8 @@ module Node{
    uses interface CommandHandler;
 
    uses interface NeighborDiscovery;
+
+   uses interface Flooding;
 }
 
 implementation{
@@ -39,6 +41,7 @@ implementation{
       if (err == SUCCESS) {
          dbg(GENERAL_CHANNEL, "Radio On\n");
          call NeighborDiscovery.start();
+         call Flooding.start();
       } else {
          // Retry until successful
          call AMControl.start();
@@ -51,7 +54,7 @@ implementation{
    }
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
-      dbg(GENERAL_CHANNEL, "Packet Received\n");
+      //dbg(GENERAL_CHANNEL, "Packet Received\n");
       
       if (len == sizeof(pack)) {
          pack* myMsg = (pack*) payload;
@@ -59,8 +62,9 @@ implementation{
 
          // Output the full package being passed through
          logPack(myMsg);
-         
+            call Flooding.forwardHandle(myMsg);
             call NeighborDiscovery.pingHandle(myMsg);
+            
          
          return msg;
       }
@@ -71,8 +75,9 @@ implementation{
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
       dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
-      makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, 0, 10, payload, PACKET_MAX_PAYLOAD_SIZE);
-      call Sender.send(sendPackage, destination);
+      //makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, 0, 10, payload, PACKET_MAX_PAYLOAD_SIZE);
+      //call Sender.send(sendPackage, destination);
+      call Flooding.pingHandle(destination, payload);
    }
 
    event void CommandHandler.printNeighbors(uint16_t node) {

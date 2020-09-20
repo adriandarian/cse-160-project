@@ -6,4 +6,6 @@
 
 interface Flooding{
     command error_t start();
+    command void forwardHandle(pack *package);
+    command void pingHandle(uint16_t destination, uint8_t *payload);
 }

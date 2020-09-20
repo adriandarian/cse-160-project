@@ -28,7 +28,7 @@ implementation {
         dbg(NEIGHBOR_CHANNEL,"Sending Neighbor ping\n");
         makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_NEIGHBORPING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
-        call updateNeighborTable.startPeriodic(500);
+       // call updateNeighborTable.startPeriodic(500); UNCOMMENT THIS FOR DYNMAIC NEIGHBOR TABLE
         
     }
     /** 
@@ -75,9 +75,9 @@ implementation {
         }
     }
     command error_t NeighborDiscovery.print() {
-        uint8_t i;
-        uint8_t val;
-        uint8_t tableSize = call Hashmap.size();
+        uint16_t i;
+        uint16_t val;
+        uint16_t tableSize = call Hashmap.size();
         uint32_t *keyPtr = call Hashmap.getKeys();
         for(i = 0; i < tableSize; i++){
             //val = *keyPtr;
@@ -90,13 +90,13 @@ implementation {
     //Need to implement timer so that neighbor table is updated
     
     event void updateNeighborTable.fired(){
-        uint8_t i;
-        uint8_t val;
+        uint16_t i;
+        uint16_t val;
         uint32_t *keyPtr = call Hashmap.getKeys();
-        uint8_t tableSize = call Hashmap.size();
+        uint16_t tableSize = call Hashmap.size();
         pack package;
-        uint8_t payload = 84;
-        dbg(GENERAL_CHANNEL,"Updating neighbor table\n");
+        uint16_t payload = 84;
+        dbg(NEIGHBOR_CHANNEL,"Updating neighbor table\n");
         makePack(&package, TOS_NODE_ID,0,1,PROTOCOL_NEIGHBORPING,0,&payload,PACKET_MAX_PAYLOAD_SIZE);
         // wait some time:
         call updateTimer.startOneShot((call Random.rand16() % 500)+300);
