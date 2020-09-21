@@ -23,7 +23,7 @@ services:
             max-size: "200k"
             max-file: "10"
         healthcheck:
-          test: ["CMD", "curl", "-f", "http://localhost"]
+          test: bash -c "make micaz sim && python pingTest.py"
           interval: 1m30s
           timeout: 10s
           retries: 3
