@@ -5,6 +5,7 @@
 // of warnings.
 char COMMAND_CHANNEL[] = "command";
 char GENERAL_CHANNEL[] = "general";
+char LOG_CHANNEL[] = "log";
 
 // Project 1
 char NEIGHBOR_CHANNEL[] = "neighbor";

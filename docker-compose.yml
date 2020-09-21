@@ -10,6 +10,7 @@ services:
         stdin_open: true # docker run -i
         tty: true # docker run -t
         command: "bash"
+        working_dir: /home
         networks: 
           cse_160_network:
             aliases:

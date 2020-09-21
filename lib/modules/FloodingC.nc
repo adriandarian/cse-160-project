@@ -13,18 +13,11 @@ implementation{
     Flooding = FloodingP;
 
     components new SimpleSendC(AM_PACK);
-    FloodingP.SimpleSend->SimpleSendC;
+    FloodingP.Sender->SimpleSendC;
 
-    components new HashmapC(uint16_t,100); //assuming less than 1000 messages in circulation at once
-    FloodingP.messageCache->HashmapC;
+    components new AMReceiverC(AM_PACK) as GeneralReceive;
+    FloodingP.Receiver->GeneralReceive;
 
-    //components new TimerMilliC() as updateNeighborTable;
-    //FloodingP.updateNeighborTable->updateNeighborTable;
-
-    components RandomC as Random;
-    FloodingP.Random->Random;
-
-    //components NeighborDiscoveryC;
-    //FloodingP.NeighborDiscovery->NeighborDiscoveryC;
-
+    components new ListC(pack, 64) as FloodingListC;
+    FloodingP.FloodingList->FloodingListC;
 }

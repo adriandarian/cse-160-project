@@ -6,7 +6,7 @@
 
 #include "../../includes/channels.h" // For printing debug statements
 #include "../../includes/packet.h"
-#include "../../includes/protocol.h" // For making our own discoverNeighbor protocol
+#include "../../includes/protocol.h"
 
 module NeighborDiscoveryP {
     provides interface NeighborDiscovery;

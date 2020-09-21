@@ -15,26 +15,21 @@
 
 module Node{
    uses interface Boot;
-
    uses interface SplitControl as AMControl;
-   uses interface Receive;
-
+   uses interface Receive as Receiver;
    uses interface SimpleSend as Sender;
-
    uses interface CommandHandler;
-
    uses interface NeighborDiscovery;
-
    uses interface Flooding;
 }
 
 implementation{
    pack sendPackage;
+   uint16_t ttl = MAX_TTL, dest = AM_BROADCAST_ADDR;
 
    event void Boot.booted() {
       call AMControl.start();
       dbg(GENERAL_CHANNEL, "Booted\n");
-      
    }
 
    event void AMControl.startDone(error_t err) {
@@ -53,19 +48,16 @@ implementation{
       dbg(GENERAL_CHANNEL, "An Error occurred: %d\n", err);
    }
 
-   event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {
-      //dbg(GENERAL_CHANNEL, "Packet Received\n");
+   event message_t* Receiver.receive(message_t* msg, void* payload, uint8_t len) {
+      dbg(GENERAL_CHANNEL, "Packet Received\n");
       
       if (len == sizeof(pack)) {
-         pack* myMsg = (pack*) payload;
-         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", myMsg->payload);
+         pack* message = (pack*) payload;
+         // dbg(GENERAL_CHANNEL, "Package Payload: %s\n", message->payload);
 
          // Output the full package being passed through
-         logPack(myMsg);
-            call Flooding.forwardHandle(myMsg);
-            call NeighborDiscovery.pingHandle(myMsg);
-            
-         
+         // logPack(message);
+
          return msg;
       }
 
@@ -75,9 +67,9 @@ implementation{
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
       dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
-      //makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, 0, 10, payload, PACKET_MAX_PAYLOAD_SIZE);
-      //call Sender.send(sendPackage, destination);
-      call Flooding.pingHandle(destination, payload);
+
+      makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+      call Flooding.send(sendPackage, destination);
    }
 
    event void CommandHandler.printNeighbors(uint16_t node) {
@@ -85,17 +77,17 @@ implementation{
       call NeighborDiscovery.print();
    }
 
-   event void CommandHandler.printRouteTable(){}
+   event void CommandHandler.printRouteTable() {}
 
-   event void CommandHandler.printLinkState(){}
+   event void CommandHandler.printLinkState() {}
 
-   event void CommandHandler.printDistanceVector(){}
+   event void CommandHandler.printDistanceVector() {}
 
-   event void CommandHandler.setTestServer(){}
+   event void CommandHandler.setTestServer() {}
 
-   event void CommandHandler.setTestClient(){}
+   event void CommandHandler.setTestClient() {}
 
-   event void CommandHandler.setAppServer(){}
+   event void CommandHandler.setAppServer() {}
 
-   event void CommandHandler.setAppClient(){}
+   event void CommandHandler.setAppClient() {}
 }

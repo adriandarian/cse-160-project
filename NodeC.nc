@@ -16,11 +16,11 @@ configuration NodeC{
 implementation {
     components MainC;
     components Node;
-    components new AMReceiverC(AM_PACK) as GeneralReceive;
 
     Node->MainC.Boot;
 
-    Node.Receive->GeneralReceive;
+    components new AMReceiverC(AM_PACK) as GeneralReceive;
+    Node.Receiver->GeneralReceive;
 
     components ActiveMessageC;
     Node.AMControl->ActiveMessageC;
@@ -31,10 +31,11 @@ implementation {
     components CommandHandlerC;
     Node.CommandHandler->CommandHandlerC;
 
-    components NeighborDiscoveryC;
-    Node.NeighborDiscovery->NeighborDiscoveryC;
-
+    // Flooding
     components FloodingC;
     Node.Flooding->FloodingC;
 
+    // Neighbor Discovery
+    components NeighborDiscoveryC;
+    Node.NeighborDiscovery->NeighborDiscoveryC;
 }
