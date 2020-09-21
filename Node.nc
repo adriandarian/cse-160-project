@@ -59,11 +59,6 @@ implementation{
          // Output the full package being passed through
          // logPack(message);
 
-         if (message->protocol == PROTOCOL_PING) {
-            call Flooding.pingHandle(message);
-            call Flooding.printFloodList();
-         }
-
          return msg;
       }
 
