@@ -54,14 +54,15 @@ implementation{
       
       if (len == sizeof(pack)) {
          pack* message = (pack*) payload;
-         dbg(GENERAL_CHANNEL, "Package Payload: %s\n", message->payload);
+         // dbg(GENERAL_CHANNEL, "Package Payload: %s\n", message->payload);
 
          // Output the full package being passed through
          // logPack(message);
 
-         call Flooding.pingHandle(message);
-
-         call Flooding.printFloodList();
+         if (message->protocol == PROTOCOL_PING) {
+            call Flooding.pingHandle(message);
+            call Flooding.printFloodList();
+         }
 
          return msg;
       }
@@ -73,7 +74,7 @@ implementation{
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
       dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
 
-      makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+      makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
       call Flooding.send(sendPackage, destination);
    }
 
