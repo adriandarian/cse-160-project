@@ -1,6 +1,5 @@
 from TestSim import TestSim
 
-
 def main():
     # Get simulation ready to run.
     s = TestSim()
@@ -21,17 +20,24 @@ def main():
     s.addChannel(s.COMMAND_CHANNEL)
     s.addChannel(s.GENERAL_CHANNEL)
     # s.addChannel(s.FLOODING_CHANNEL)
-    s.addChannel(s.NEIGHBOR_CHANNEL)
+    # s.addChannel(s.NEIGHBOR_CHANNEL)
     # s.addChannel(s.LOG_CHANNEL)
 
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(20)
 
     s.ping(1, 5, "1->5")
+    s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
 
     # Print all neighbors in Topology
     for i in range(9):
-        s.runTime(10)
+        s.runTime(20)
         s.neighborDMP(i)
 
     s.runTime(20)

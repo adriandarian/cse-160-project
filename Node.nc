@@ -16,7 +16,7 @@
 module Node{
    uses interface Boot;
    uses interface SplitControl as AMControl;
-   uses interface Receive as Receiver;
+   uses interface Receive;
    uses interface SimpleSend as Sender;
    uses interface CommandHandler;
    uses interface NeighborDiscovery;
@@ -25,16 +25,18 @@ module Node{
 
 implementation{
    pack sendPackage;
-   uint16_t ttl = MAX_TTL, dest = AM_BROADCAST_ADDR;
 
    event void Boot.booted() {
       call AMControl.start();
       dbg(GENERAL_CHANNEL, "Booted\n");
+      
    }
 
    event void AMControl.startDone(error_t err) {
       if (err == SUCCESS) {
          dbg(GENERAL_CHANNEL, "Radio On\n");
+
+         // Initialize Neighbor Discovery as each node awakes
          call NeighborDiscovery.start();
       } else {
          // Retry until successful
@@ -47,19 +49,21 @@ implementation{
       dbg(GENERAL_CHANNEL, "An Error occurred: %d\n", err);
    }
 
-   event message_t* Receiver.receive(message_t* msg, void* payload, uint8_t len) {
-      // dbg(GENERAL_CHANNEL, "Packet Received\n");
-      
+   event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {      
       if (len == sizeof(pack)) {
-         pack* message = (pack*) payload;
-         // dbg(GENERAL_CHANNEL, "Package Payload: %s\n", message->payload);
+         pack* myMsg = (pack*) payload;
 
          // Output the full package being passed through
-         // logPack(message);
+         // logPack(myMsg);
 
-         // Execute Neighbor Discovery
-         call NeighborDiscovery.pingHandle(message);
-
+         if (myMsg->protocol == PROTOCOL_NEIGHBOR_PING || myMsg->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
+            // Handle Pings in Neighbor Discovery
+            call NeighborDiscovery.pingHandle(myMsg);
+         } else if (myMsg->protocol == PROTOCOL_PING || myMsg->protocol == PROTOCOL_PINGREPLY) {
+            // Handle Pings in Flooding
+            call Flooding.pingHandle(myMsg); 
+         }
+         
          return msg;
       }
 
@@ -68,14 +72,15 @@ implementation{
    }
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
-      dbg(GENERAL_CHANNEL, "PING SENT TO %u\n", destination);
+      dbg(GENERAL_CHANNEL, "Ping sent to node %u from node %u\n", destination, TOS_NODE_ID);
 
+      // Execute Flooding
       makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
       call Flooding.send(sendPackage, destination);
    }
 
    event void CommandHandler.printNeighbors(uint16_t node) {
-      dbg(GENERAL_CHANNEL, "Printing Neighbors of %d\n", node);
+      dbg(GENERAL_CHANNEL, "Printing Neighbors of node %d\n", node);
       call NeighborDiscovery.print();
    }
 

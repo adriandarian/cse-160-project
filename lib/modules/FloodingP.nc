@@ -11,9 +11,7 @@
 module FloodingP {
     provides interface Flooding;
 
-    // Interfaces to be used:
     uses interface SimpleSend as Sender;
-    uses interface Receive as Receiver;
     uses interface List<pack> as FloodingList;
 }
 
@@ -67,54 +65,52 @@ implementation {
         call Sender.send(package, AM_BROADCAST_ADDR);
     }
 
-    event message_t *Receiver.receive(message_t * msg, void *payload, uint8_t len) {
-        if (len == sizeof(pack)) {
-            pack *message = (pack *)payload;
+    command void Flooding.pingHandle(pack* message) {
+        // Have we seen the node before
+        if (message->TTL <= 0 || searchForPackage(message)) {
+            // Drop the packet if we've seen it or if it's TTL has run out: i.e. do nothing
+            dbg(FLOODING_CHANNEL, "Package in node %d already inside of cache, proceeding to drop\n", TOS_NODE_ID);
+            return;
+        } else if (message->dest == TOS_NODE_ID) {
+            dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
 
-            // Have we seen the node before
-            if (message->TTL == 0 || searchForPackage(message)) {
-                // Drop the packet if we've seen it or if it's TTL has run out: i.e. do nothing
-                dbg(FLOODING_CHANNEL, "Packet Exists in the List so dropping packet with seq %d from %d\n", message->seq, TOS_NODE_ID);
-                return msg;
-            } else if (message->dest == TOS_NODE_ID) {
-                dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d\n", message->src, message->dest);
+            // Found its destination, does nothing if so
+            if (message->protocol == PROTOCOL_PING) {
+                // dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
 
-                // Found its destination, does nothing if so
-                if (message->protocol == PROTOCOL_PING) {
-                    // dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
-
-                    // Add to cache
-                    pushToFloodingList(message);
-
-                    // TODO: PINGREPLY DOES NOT WORK, BUT LUCKILY WE DID NOT NEED IT
-                    // makePack(&sendPackage, message->dest, message->src, message->TTL - 1, PROTOCOL_PINGREPLY, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
-                    // call Sender.send(sendPackage, AM_BROADCAST_ADDR);
-                    
-                    return msg;
-                } else if (message->protocol == PROTOCOL_PINGREPLY) {
-                    dbg(FLOODING_CHANNEL, "Received a Ping Reply from %d\n", message->src);
-                }
-
-                return msg;
-            } else {
-                // Re-validate list of seen nodes 
+                // Add to cache
                 pushToFloodingList(message);
-                dbg(FLOODING_CHANNEL, "Flooding at node %d\n", TOS_NODE_ID);
-                makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
-                call Sender.send(sendPackage, AM_BROADCAST_ADDR);
-            }
 
-            return msg;
+                // TODO: PINGREPLY DOES NOT WORK, BUT LUCKILY WE DID NOT NEED IT
+                // makePack(&sendPackage, message->dest, message->src, message->TTL - 1, PROTOCOL_PINGREPLY, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                // call Sender.send(sendPackage, AM_BROADCAST_ADDR);
+                
+                return;
+            } 
+            // else if (message->protocol == PROTOCOL_PINGREPLY) {
+            //     dbg(FLOODING_CHANNEL, "Received a Ping Reply from node %d\n", message->src);
+            // }
+
+            return;
+        } else {
+            dbg(FLOODING_CHANNEL, "Flooding at node %d\n", TOS_NODE_ID);
+
+            // Re-validate list of seen nodes 
+            pushToFloodingList(message);
+
+            // Send off package to next node in network
+            makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+            call Sender.send(sendPackage, AM_BROADCAST_ADDR);
         }
 
-        dbg(GENERAL_CHANNEL, "Unknown Packet Type %u\n", len);
-        return msg;
+        return;
     }
 }
 
 
 
 /*
+*       example.topo
 *             1
 *           /  \
 *          3 __ 2

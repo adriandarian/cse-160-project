@@ -20,7 +20,7 @@ implementation {
     Node->MainC.Boot;
 
     components new AMReceiverC(AM_PACK) as GeneralReceive;
-    Node.Receiver->GeneralReceive;
+    Node.Receive->GeneralReceive;
 
     components ActiveMessageC;
     Node.AMControl->ActiveMessageC;
