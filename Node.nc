@@ -57,6 +57,9 @@ implementation{
          // Output the full package being passed through
          // logPack(message);
 
+         // Execute Neighbor Discovery
+         call NeighborDiscovery.pingHandle(message);
+
          return msg;
       }
 
