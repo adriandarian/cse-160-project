@@ -69,27 +69,29 @@ implementation {
             dbg(NEIGHBOR_CHANNEL,"Sent reply\n");
         }
         //Check if neighbors replied by checking protocol:
-        else if(package->protocol = PROTOCOL_NEIGHBORPINGREPLY){
+        else if(package->protocol == PROTOCOL_NEIGHBORPINGREPLY) {
             dbg(NEIGHBOR_CHANNEL,"Neighbor discovred %d\n",package->src);
             call Hashmap.insert(package->src,1);
         }
     }
+
     command error_t NeighborDiscovery.print() {
         uint16_t i;
         uint16_t val;
         uint16_t tableSize = call Hashmap.size();
         uint32_t *keyPtr = call Hashmap.getKeys();
-        for(i = 0; i < tableSize; i++){
+        for(i = 0; i < tableSize; i++) {
             //val = *keyPtr;
-            dbg(NEIGHBOR_CHANNEL, "My neighbors: %d\n",keyPtr[i]); 
+            dbg(NEIGHBOR_CHANNEL, "My neighbors: %d\n", keyPtr[i]); 
 
         }
+
         dbg(NEIGHBOR_CHANNEL,"\n");
         
     }
-    //Need to implement timer so that neighbor table is updated
     
-    event void updateNeighborTable.fired(){
+    //Need to implement timer so that neighbor table is updated
+    event void updateNeighborTable.fired() {
         uint16_t i;
         uint16_t val;
         uint32_t *keyPtr = call Hashmap.getKeys();

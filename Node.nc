@@ -36,7 +36,6 @@ implementation{
       if (err == SUCCESS) {
          dbg(GENERAL_CHANNEL, "Radio On\n");
          call NeighborDiscovery.start();
-         call Flooding.start();
       } else {
          // Retry until successful
          call AMControl.start();
@@ -49,7 +48,7 @@ implementation{
    }
 
    event message_t* Receiver.receive(message_t* msg, void* payload, uint8_t len) {
-      dbg(GENERAL_CHANNEL, "Packet Received\n");
+      // dbg(GENERAL_CHANNEL, "Packet Received\n");
       
       if (len == sizeof(pack)) {
          pack* message = (pack*) payload;
@@ -73,7 +72,7 @@ implementation{
    }
 
    event void CommandHandler.printNeighbors(uint16_t node) {
-      dbg(GENERAL_CHANNEL, "neighbors: %d\n", node);
+      dbg(GENERAL_CHANNEL, "Printing Neighbors of %d\n", node);
       call NeighborDiscovery.print();
    }
 

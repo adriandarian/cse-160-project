@@ -81,7 +81,7 @@ implementation {
 
                 // Found its destination, does nothing if so
                 if (message->protocol == PROTOCOL_PING) {
-                    dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
+                    // dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
 
                     // Add to cache
                     pushToFloodingList(message);
