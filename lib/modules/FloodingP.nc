@@ -46,7 +46,6 @@ implementation {
 
     void printFloodList() {
         uint16_t i = 0;
-        dbg(LOG_CHANNEL, "Flood List Print\n");
         if (!call FloodingList.isEmpty()) {
             dbg(LOG_CHANNEL, "Start Flood List Print\n");
 
@@ -80,8 +79,6 @@ implementation {
             } else if (message->dest == TOS_NODE_ID) {
                 dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d\n", message->src, message->dest);
 
-                printFloodList();
-
                 // Found its destination, does nothing if so
                 if (message->protocol == PROTOCOL_PING) {
                     dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
@@ -89,8 +86,9 @@ implementation {
                     // Add to cache
                     pushToFloodingList(message);
 
-                    makePack(&sendPackage, message->dest, message->src, message->TTL - 1, PROTOCOL_PINGREPLY, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
-                    call Sender.send(sendPackage, AM_BROADCAST_ADDR);
+                    // TODO: PINGREPLY DOES NOT WORK, BUT LUCKILY WE DID NOT NEED IT
+                    // makePack(&sendPackage, message->dest, message->src, message->TTL - 1, PROTOCOL_PINGREPLY, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                    // call Sender.send(sendPackage, AM_BROADCAST_ADDR);
                     
                     return msg;
                 } else if (message->protocol == PROTOCOL_PINGREPLY) {

@@ -9,7 +9,7 @@ def main():
     s.runTime(1)
 
     # Load the the layout of the network.
-    s.loadTopo("example.topo")
+    s.loadTopo("long_line.topo")
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt")
@@ -28,7 +28,7 @@ def main():
     s.runTime(20)
     # s.ping(1, 5, "Multi Hops working!")
     # s.runTime(10)
-    s.ping(1, 2, "1->2")
+    s.ping(1, 5, "1->5")
     # s.runTime(10)
     # s.neighborDMP(3)
     # s.runTime(10)
