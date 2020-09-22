@@ -8,7 +8,7 @@ def main():
     s.runTime(1)
 
     # Load the the layout of the network.
-    s.loadTopo("example.topo")
+    s.loadTopo("pizza.topo")
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt")
@@ -36,7 +36,7 @@ def main():
     s.runTime(20)
 
     # Print all neighbors in Topology
-    for i in range(9):
+    for i in range(s.numMote + 1):
         s.runTime(20)
         s.neighborDMP(i)
 
