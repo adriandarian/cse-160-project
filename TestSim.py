@@ -35,6 +35,7 @@ class TestSim:
 
     # Initialize Vars
     numMote = 0
+    moteEdges = []
 
     def __init__(self):
         self.t = Tossim([])
@@ -57,6 +58,7 @@ class TestSim:
             s = line.split()
             if s:
                 print(" "), s[0], " ", s[1], " ", s[2]
+                self.moteEdges = self.moteEdges + [(s[0], s[1])]
                 self.r.add(int(s[0]), int(s[1]), float(s[2]))
                 if not int(s[0]) in self.moteids:
                     self.moteids = self.moteids + [int(s[0])]

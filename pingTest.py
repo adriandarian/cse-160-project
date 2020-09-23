@@ -1,4 +1,6 @@
 from TestSim import TestSim
+import networkx as nx
+import matplotlib.pyplot as plt
 
 def main():
     # Get simulation ready to run.
@@ -7,8 +9,17 @@ def main():
     # Before we do anything, lets simulate the network off.
     s.runTime(1)
 
+    topologyFile = "pizza"
+
     # Load the the layout of the network.
-    s.loadTopo("pizza.topo")
+    s.loadTopo(topologyFile + ".topo")
+
+    # Generate Topology Graph
+    G = nx.Graph()
+    G.add_nodes_from(s.moteids)
+    G.add_edges_from(s.moteEdges)
+    nx.draw(G)
+    plt.savefig("./topo/" + topologyFile + ".png")
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt")

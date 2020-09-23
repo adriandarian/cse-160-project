@@ -10,7 +10,7 @@ on what is expected will be provided as the school year continues.
 #### Start the OS
 
 ```bash
-docker-compose up -d --build
+docker-compose up -d
 ```
 
 #### Open Interactive Shell
@@ -112,3 +112,7 @@ def main():
 if __name__ == '__main__':
     main()
 ```
+
+### Notes on visualization
+
+```pip3 install networkx matplotlib==2.2.5```

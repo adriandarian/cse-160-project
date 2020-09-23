@@ -11,7 +11,7 @@
 enum{
 	PACKET_HEADER_LENGTH = 8,
 	PACKET_MAX_PAYLOAD_SIZE = 28 - PACKET_HEADER_LENGTH,
-	MAX_TTL = 15
+	MAX_TTL = 16 // 16 because Cerpa said that he believes 16 is the official MAX_TTL that is used
 };
 
 typedef nx_struct pack{
@@ -43,7 +43,7 @@ void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t
 }
 
 enum{
-	AM_PACK=6
+	AM_PACK = 6
 };
 
 #endif
