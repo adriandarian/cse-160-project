@@ -14,5 +14,5 @@ interface Hashmap<t>{
    command bool contains(uint32_t key);
    command bool isEmpty();
    command uint16_t size();
-   command uint32_t * getKeys();
+   command uint32_t* getKeys();
 }

@@ -21,6 +21,7 @@ module Node{
    uses interface CommandHandler;
    uses interface NeighborDiscovery;
    uses interface Flooding;
+   uses interface List<uint16_t> as List;
 }
 
 implementation{
@@ -59,7 +60,7 @@ implementation{
          if (myMsg->protocol == PROTOCOL_NEIGHBOR_PING || myMsg->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
             // Handle Pings in Neighbor Discovery
             call NeighborDiscovery.pingHandle(myMsg);
-         } else if (myMsg->protocol == PROTOCOL_PING || myMsg->protocol == PROTOCOL_PINGREPLY) {
+         } else if (myMsg->protocol == PROTOCOL_PING || myMsg->protocol == PROTOCOL_PING_REPLY) {
             // Handle Pings in Flooding
             call Flooding.pingHandle(myMsg); 
          }

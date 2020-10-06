@@ -16,7 +16,7 @@ docker-compose up -d --build
 #### Open Interactive Shell
 
 ```bash
-docker exec -it project-1 /bin/bash
+docker exec -it project-2 /bin/bash
 ```
 
 ### Data Structures
