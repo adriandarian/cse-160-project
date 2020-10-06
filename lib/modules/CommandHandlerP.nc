@@ -14,6 +14,7 @@ module CommandHandlerP{
    uses interface Pool<message_t>;
    uses interface Queue<message_t*>;
    uses interface Packet;
+   uses interface NeighborDiscovery;
 }
 
 implementation{
@@ -24,6 +25,8 @@ implementation{
             uint8_t* buff;
             message_t *raw_msg;
             void *payload;
+            uint32_t *keys;
+            uint16_t i;
 
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();
@@ -55,6 +58,10 @@ implementation{
             case CMD_NEIGHBOR_DUMP:
                 dbg(COMMAND_CHANNEL, "Command Type: Neighbor Dump\n");
                 signal CommandHandler.printNeighbors(msg->dest);
+                // keys = call NeighborDiscovery.getNeighbors();
+                // for (i = 0; i < call NeighborDiscovery.size(); i++) {
+                //     dbg(LOG_CHANNEL, "%d\n", keys[i]);
+                // }
                 break;
 
             case CMD_LINKSTATE_DUMP:

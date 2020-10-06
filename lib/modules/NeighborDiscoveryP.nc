@@ -97,6 +97,10 @@ implementation {
 
     event void updateTimer.fired() {}
 
+    command uint16_t NeighborDiscovery.size() {
+        return call Hashmap.size();
+    }
+
     command uint32_t* NeighborDiscovery.getNeighbors() {
         return call Hashmap.getKeys();
     }

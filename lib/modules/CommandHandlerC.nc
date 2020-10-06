@@ -27,4 +27,7 @@ implementation{
 
    components ActiveMessageC;
    CommandHandlerP.Packet->ActiveMessageC;
+
+   components NeighborDiscoveryC;
+   CommandHandlerP.NeighborDiscovery->NeighborDiscoveryC;
 }
