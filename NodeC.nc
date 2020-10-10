@@ -38,4 +38,8 @@ implementation {
     // Neighbor Discovery
     components NeighborDiscoveryC;
     Node.NeighborDiscovery->NeighborDiscoveryC;
+
+    // Link State
+    components LinkStateC;
+    Node.LinkState->LinkStateC;
 }

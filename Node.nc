@@ -17,11 +17,14 @@ module Node{
    uses interface Boot;
    uses interface SplitControl as AMControl;
    uses interface Receive;
+   
+   uses interface List<uint16_t> as List;
+
    uses interface SimpleSend as Sender;
    uses interface CommandHandler;
    uses interface NeighborDiscovery;
    uses interface Flooding;
-   uses interface List<uint16_t> as List;
+   uses interface LinkState;
 }
 
 implementation{
@@ -85,7 +88,10 @@ implementation{
       call NeighborDiscovery.print();
    }
 
-   event void CommandHandler.printRouteTable() {}
+   event void CommandHandler.printRouteTable() {
+      dbg(ROUTING_CHANNEL, "Printing Routing Table\n");
+      call LinkState.printRoutingTable();
+   }
 
    event void CommandHandler.printLinkState() {}
 

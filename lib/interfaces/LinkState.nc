@@ -6,4 +6,5 @@
 interface LinkState{
 	command void start();
 	command void printRoutingTable();
+	command void LSAHandle(pack *package);
 }
