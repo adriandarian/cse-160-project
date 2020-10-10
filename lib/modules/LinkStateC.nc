@@ -20,12 +20,15 @@ implementation{
     components NeighborDiscoveryC;
     LinkStateP.NeighborDiscovery->NeighborDiscoveryC;
 
-    components new ListC(LSA, 64) as TemporaryListC;
+    components new TimerMilliC() as LinkStateTimerC;
+    LinkStateP.LinkStateTimer->LinkStateTimerC;
+
+    components new ListC(LS, 64) as TemporaryListC;
     LinkStateP.TemporaryList->TemporaryListC;
 
-    components new ListC(LSA, 64) as TentativeListC;
+    components new ListC(LS, 64) as TentativeListC;
     LinkStateP.TentativeList->TentativeListC;
 
-    components new ListC(LSA, 64) as ConfirmedListC;
+    components new ListC(LS, 64) as ConfirmedListC;
     LinkStateP.ConfirmedList->ConfirmedListC;
 }

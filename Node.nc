@@ -42,6 +42,7 @@ implementation{
 
          // Initialize Neighbor Discovery as each node awakes
          call NeighborDiscovery.start();
+         call LinkState.start();
       } else {
          // Retry until successful
          call AMControl.start();
@@ -55,17 +56,20 @@ implementation{
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {      
       if (len == sizeof(pack)) {
-         pack* myMsg = (pack*) payload;
+         pack* message = (pack*) payload;
 
          // Output the full package being passed through
          // logPack(myMsg);
 
-         if (myMsg->protocol == PROTOCOL_NEIGHBOR_PING || myMsg->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
-            // Handle Pings in Neighbor Discovery
-            call NeighborDiscovery.pingHandle(myMsg);
-         } else if (myMsg->protocol == PROTOCOL_PING || myMsg->protocol == PROTOCOL_PING_REPLY) {
-            // Handle Pings in Flooding
-            call Flooding.pingHandle(myMsg); 
+         if (message->protocol == PROTOCOL_NEIGHBOR_PING || message->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
+            // Handle Pings in Neighbor Discovery Module
+            call NeighborDiscovery.pingHandle(message);
+         } else if (message->protocol == PROTOCOL_PING || message->protocol == PROTOCOL_PING_REPLY) {
+            // Handle Pings in Flooding Module
+            call Flooding.pingHandle(message);
+         } else if (message->protocol == PROTOCOL_LINKED_STATE) {
+            // Handle Pings in Link State Module
+            call LinkState.LSHandler(message);
          }
          
          return msg;

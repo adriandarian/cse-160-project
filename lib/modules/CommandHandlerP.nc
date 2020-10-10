@@ -24,8 +24,6 @@ implementation{
             uint8_t* buff;
             message_t *raw_msg;
             void *payload;
-            uint32_t *keys;
-            uint16_t i;
 
             // Pop message out of queue.
             raw_msg = call Queue.dequeue();

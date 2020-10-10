@@ -66,41 +66,45 @@ implementation {
     }
 
     command void Flooding.pingHandle(pack* message) {
-        // Have we seen the node before
-        if (message->TTL <= 0 || searchForPackage(message)) {
-            // Drop the packet if we've seen it or if it's TTL has run out: i.e. do nothing
-            dbg(FLOODING_CHANNEL, "Package in node %d already inside of cache, proceeding to drop\n", TOS_NODE_ID);
-            return;
-        } else if (message->dest == TOS_NODE_ID) {
-            dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
+        if (message->protocol == PROTOCOL_PING) {
+            // Have we seen the node before
+            if (message->TTL <= 0 || searchForPackage(message)) {
+                // Drop the packet if we've seen it or if it's TTL has run out: i.e. do nothing
+                dbg(FLOODING_CHANNEL, "Package in node %d already inside of cache, proceeding to drop\n", TOS_NODE_ID);
+                return;
+            } else if (message->dest == TOS_NODE_ID) {
+                dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
 
-            // Found its destination, does nothing if so
-            if (message->protocol == PROTOCOL_PING) {
-                // dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
+                // Found its destination, does nothing if so
+                if (message->protocol == PROTOCOL_PING) {
+                    // dbg(FLOODING_CHANNEL, "Sending a Ping Reply from: %d to %d with seq %d\n", message->dest, message->src, message->seq);
 
-                // Add to cache
+                    // Add to cache
+                    pushToFloodingList(message);
+
+                    // TODO: PINGREPLY DOES NOT WORK, BUT LUCKILY WE DID NOT NEED IT
+                    // makePack(&sendPackage, message->dest, message->src, message->TTL - 1, PROTOCOL_PINGREPLY, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                    // call Sender.send(sendPackage, AM_BROADCAST_ADDR);
+                    
+                    return;
+                } 
+                // else if (message->protocol == PROTOCOL_PINGREPLY) {
+                //     dbg(FLOODING_CHANNEL, "Received a Ping Reply from node %d\n", message->src);
+                // }
+
+                return;
+            } else {
+                dbg(FLOODING_CHANNEL, "Flooding at node %d\n", TOS_NODE_ID);
+
+                // Re-validate list of seen nodes 
                 pushToFloodingList(message);
 
-                // TODO: PINGREPLY DOES NOT WORK, BUT LUCKILY WE DID NOT NEED IT
-                // makePack(&sendPackage, message->dest, message->src, message->TTL - 1, PROTOCOL_PINGREPLY, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
-                // call Sender.send(sendPackage, AM_BROADCAST_ADDR);
-                
-                return;
-            } 
-            // else if (message->protocol == PROTOCOL_PINGREPLY) {
-            //     dbg(FLOODING_CHANNEL, "Received a Ping Reply from node %d\n", message->src);
-            // }
-
-            return;
-        } else {
-            dbg(FLOODING_CHANNEL, "Flooding at node %d\n", TOS_NODE_ID);
-
-            // Re-validate list of seen nodes 
-            pushToFloodingList(message);
-
-            // Send off package to next node in network
-            makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
-            call Sender.send(sendPackage, AM_BROADCAST_ADDR);
+                // Send off package to next node in network
+                makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                call Sender.send(sendPackage, AM_BROADCAST_ADDR);
+            }
+        } else if (message->protocol == PROTOCOL_LINKED_STATE) {
+            dbg(ROUTING_CHANNEL, "Link State got here\n");
         }
 
         return;

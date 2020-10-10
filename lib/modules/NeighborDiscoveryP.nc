@@ -38,7 +38,7 @@ implementation {
             // Also change the protocol to a ping reply so when the neighboring nodes recive it they dont forward it
             uint16_t dest = package->src;
             package->protocol = PROTOCOL_NEIGHBOR_PING_REPLY;
-            package->TTL--;
+            package->TTL -= 1;
             package->src = TOS_NODE_ID;
 
             // broadcast the modified package:
@@ -48,14 +48,13 @@ implementation {
 
         // Check if neighbors replied by checking protocol:
         else if (package->protocol = PROTOCOL_NEIGHBOR_PING_REPLY) {
-            dbg(NEIGHBOR_CHANNEL, "Neighbor discovred %d\n", package->src);
+            dbg(NEIGHBOR_CHANNEL, "Neighbor discovered %d\n", package->src);
             call Hashmap.insert(package->src, 1);
         }
     }
 
     command error_t NeighborDiscovery.print() {
         uint16_t i;
-        uint16_t val;
         uint16_t tableSize = call Hashmap.size();
         uint32_t *keyPtr = call Hashmap.getKeys();
 
@@ -70,7 +69,6 @@ implementation {
     // Need to implement timer so that neighbor table is updated
     event void updateNeighborTable.fired() {
         uint16_t i;
-        uint16_t val;
         uint32_t *keyPtr = call Hashmap.getKeys();
         uint16_t tableSize = call Hashmap.size();
         pack package;
