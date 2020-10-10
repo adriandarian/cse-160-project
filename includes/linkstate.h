@@ -7,9 +7,9 @@ enum{
 };
 
 typedef nx_struct linkstate{
-	nx_uint16_t neighbor;
+	nx_uint16_t destination;
 	nx_uint8_t cost;
-	nx_uint8_t src;
+	nx_uint8_t nextHop;
 }linkstate;
 
 #endif

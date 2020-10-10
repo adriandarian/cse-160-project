@@ -1,5 +1,5 @@
 /*
- * ~NEIGHBOR DISCOVERY MODULE~
+ * ~Neighbor Discovery Module~
  * Busher Bridi, Adrian Darian 
  * UC MERCED, Prof. Cerpa CSE 160, 2020
  */
