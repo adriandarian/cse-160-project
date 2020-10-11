@@ -125,18 +125,25 @@ implementation{
     };
     //On LSA recieved
     command void LinkState.LSHandler(pack *package) {
+        
     /*
     * TODO: 
-    *  [] Check if packet is already recieved. If not store in tentative with +1 to cost then for all Tuples in LSA change neighborAddress change to TOS_NODE_ID (also with the +1 to cost and sequence num)
+    *  [] Check if packet is already recieved. If not store in tentative with +1 to cost (also with the +1 to cost and sequence num)
     */
         LSA *recievedLSA;
         uint8_t dest;
         uint8_t src;
         uint8_t cost;
         uint16_t linkStateSize;
+       // uint16_t packSeqNum = package->seq; //packageSeqNum
+        uint16_t seqNum;
         uint8_t i;
-
+        LSATuple LSAT;
+        LSATuple LSATList[linkStateSize];
+        
+        
         if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0 && !searchForPackage(package)) {
+            
             /*
              * 1) Get the package
              * 2) set a var equal to the payload
@@ -144,7 +151,9 @@ implementation{
              */
 
             recievedLSA = package->payload;
+            seqNum = recievedLSA->sequence;
             linkStateSize = recievedLSA->linkStateSize;
+            dbg(ROUTING_CHANNEL, "Recived packet regarding: %d\n", recievedLSA->linkStates[0].neighborAddress);
             for(i = 0; i < linkStateSize; i++){
                 dest = recievedLSA->linkStates[i].neighborAddress;
                 cost = recievedLSA->linkStates[i].cost+1;
@@ -153,8 +162,13 @@ implementation{
                 makeLS(&linkState, dest, cost, src);
                 updateTentativeList(&linkState);
                 //Prepare tuples for forwarding:
-                
+                makeLSATuple(&LSAT, dest, cost);
+                LSATList[i] = LSAT;
             }
+            seqNum++;
+            makeLSA(&linkStateAdvertisement, TOS_NODE_ID, seqNum, LSATList, linkStateSize);
+            makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+            call Flooding.LSAHandle(&sendPackage);
             
         }
     }
@@ -195,7 +209,7 @@ implementation{
         dbg(ROUTING_CHANNEL, "Payload: %d\n", LSAT.cost);
         //payload stores the address of linkStateAdvertisement which is type LSA.
         // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
-        makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&sendPackage, TOS_NODE_ID, 0, 16, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call Flooding.LSAHandle(&sendPackage);
     }
