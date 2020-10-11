@@ -31,4 +31,7 @@ implementation{
 
     components new ListC(LS, 64) as ConfirmedListC;
     LinkStateP.ConfirmedList->ConfirmedListC;
+
+    components new ListC(pack, 64) as RecievedList;
+    LinkStateP.RecievedList->RecievedList;
 }

@@ -115,10 +115,9 @@ implementation {
 
     command void Flooding.LSAHandle(pack* message) {
         LSA *payload = message->payload;
-        LSATuple *LinkStates = payload->linkStates;
+        LSATuple LinkStates = payload->linkStates[0];
         logPack(message);
-
-        dbg(ROUTING_CHANNEL, "Payload: %d\n", LinkStates[0]);
+        dbg(ROUTING_CHANNEL, "Payload:[Neighbor: %d, cost: %d]\n", LinkStates.neighborAddress, LinkStates.cost);
         /*
         * 1) Get flooding package
         * 2) Access tuple list

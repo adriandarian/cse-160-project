@@ -13,7 +13,7 @@ module LinkStateP{
     uses interface SimpleSend as LinkStateSender;
     uses interface Flooding;
     uses interface NeighborDiscovery;
-
+    uses interface List<pack> as RecievedList;
     uses interface Timer<TMilli> as LinkStateTimer;
 
     uses interface List<LS> as TemporaryList;
@@ -26,6 +26,7 @@ implementation{
     LSA linkStateAdvertisement;
     pack sendPackage;
     uint8_t payload;
+    
 
     /*
     * TODO: 
@@ -34,7 +35,6 @@ implementation{
     *  [ ] Fix LSA handle
     *  [ ] Dijkstra
     *  [ ] Routing Table
-    *
     *  [ ] IP Module (Forwarding)
     *  [ ] Document code
     *  [ ] Test
@@ -109,23 +109,53 @@ implementation{
             dbg(ROUTING_CHANNEL, "Failed to remove linkstate with destination %d from TentativeList\n", linkstate->destination);
         }
     }
+        bool searchForPackage(pack *package) {
+        uint16_t i = 0, RecievedListSize = call RecievedList.size();
+        while (i < RecievedListSize) {
+          pack temporaryPackage = call RecievedList.get(i);
 
+          if (temporaryPackage.src == package->src && temporaryPackage.dest == package->dest && temporaryPackage.seq == package->seq) {
+            return TRUE;
+          }
+
+          i++;
+        }
+
+        return FALSE;
+    };
+    //On LSA recieved
     command void LinkState.LSHandler(pack *package) {
+    /*
+    * TODO: 
+    *  [] Check if packet is already recieved. If not store in tentative with +1 to cost then for all Tuples in LSA change neighborAddress change to TOS_NODE_ID (also with the +1 to cost and sequence num)
+    */
+        LSA *recievedLSA;
         uint8_t dest;
         uint8_t src;
         uint8_t cost;
+        uint16_t linkStateSize;
+        uint8_t i;
 
-        if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0) {
+        if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0 && !searchForPackage(package)) {
             /*
              * 1) Get the package
              * 2) set a var equal to the payload
              * 3) Store the payload tuples in our tentative list
              */
-            dest = *package->payload;
-            src = package->src;
-            cost = package->seq + 1;
-            makeLS(&linkState, dest, cost, src);
-            updateTentativeList(&linkState);
+
+            recievedLSA = package->payload;
+            linkStateSize = recievedLSA->linkStateSize;
+            for(i = 0; i < linkStateSize; i++){
+                dest = recievedLSA->linkStates[i].neighborAddress;
+                cost = recievedLSA->linkStates[i].cost+1;
+                src = package->src;
+                //Insert into TentativeList:
+                makeLS(&linkState, dest, cost, src);
+                updateTentativeList(&linkState);
+                //Prepare tuples for forwarding:
+                
+            }
+            
         }
     }
 
@@ -149,6 +179,9 @@ implementation{
         uint16_t neighborListSize = call NeighborDiscovery.size();
         LSATuple LSAT;
         LSATuple LSATList[neighborListSize];
+        // for (i = 0; i < neighborListSize; i++){
+        //     LSATList[i]=0;    
+        // }
         
         for (i = 0; i < neighborListSize; i++) {
             makeLSATuple(&LSAT, neighbors[i], 1);
@@ -156,11 +189,16 @@ implementation{
             //*(LSATList + i) = LSAT; // LSAList[i] = LSAT
             LSATList[i] = LSAT;
         }
-        
-        makeLSA(&linkStateAdvertisement, TOS_NODE_ID, 0, LSATList);
+        makeLSA(&linkStateAdvertisement, TOS_NODE_ID, 0, LSATList, neighborListSize);
+
+       
+        dbg(ROUTING_CHANNEL, "Payload: %d\n", LSAT.cost);
         //payload stores the address of linkStateAdvertisement which is type LSA.
         // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
         makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        
         call Flooding.LSAHandle(&sendPackage);
     }
+
+
 }

@@ -20,6 +20,7 @@ typedef nx_struct LSA{
 	nx_uint16_t source;
 	nx_uint16_t sequence;
 	LSATuple linkStates[MAX_LINK_STATE];
+	nx_uint16_t linkStateSize;
 }LSA;
 
 void makeLS(LS *linkState, uint16_t destination, uint16_t cost, uint16_t nextHop) {
@@ -34,12 +35,14 @@ void makeLSATuple(LSATuple *linkStateAdvertisementTuple, uint16_t neighborAddres
 	linkStateAdvertisementTuple->cost = cost;
 }
 
-void makeLSA(LSA *linkStateAdvertisement, uint16_t source, uint16_t sequence, LSATuple* linkStates) {
-	dbg(ROUTING_CHANNEL, "source: %d, sequence: %d, link states: %d\n", source, sequence, linkStates[0].neighborAddress);
+void makeLSA(LSA *linkStateAdvertisement, uint16_t source, uint16_t sequence, LSATuple* linkStates, uint16_t linkStateSize) {
+	dbg(ROUTING_CHANNEL, "source: %d, sequence: %d, link states: %d, linkStateSize: %d\n", source, sequence, linkStates[0].neighborAddress, linkStateSize);
 	linkStateAdvertisement->source = source;
 	linkStateAdvertisement->sequence = sequence;
+	linkStateAdvertisement->linkStateSize = linkStateSize;
 	// memcpy(linkStateAdvertisement->linkStates, &linkStates, MAX_LINK_STATE); //retake 31 my guy lmao
 	memcpy(linkStateAdvertisement->linkStates, linkStates, MAX_LINK_STATE);
+	
 }
 
 #endif
