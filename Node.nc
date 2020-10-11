@@ -39,7 +39,7 @@ implementation{
    event void AMControl.startDone(error_t err) {
       if (err == SUCCESS) {
          dbg(GENERAL_CHANNEL, "Radio On\n");
-
+         
          // Initialize Neighbor Discovery as each node awakes
          call NeighborDiscovery.start();
          call LinkState.start();
@@ -59,7 +59,7 @@ implementation{
          pack* message = (pack*) payload;
 
          // Output the full package being passed through
-         // logPack(myMsg);
+         // logPack(message);
 
          if (message->protocol == PROTOCOL_NEIGHBOR_PING || message->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
             // Handle Pings in Neighbor Discovery Module

@@ -26,42 +26,27 @@ implementation{
     LSA linkStateAdvertisement;
     pack sendPackage;
     uint8_t payload;
-/*
- * TODO: 
- *  Create LSA with neighbors 
- *  Make flooding command to send LSA to network
- *  Fix LSA handle
- *  Dijkstra
- *  Routing Table
- *
- *  IP Module (Forwarding)
- *  Document code
-*/
-    command void LinkState.start() {
-        uint32_t *keys;
-        uint8_t i = 0;
 
+    /*
+    * TODO: 
+    *  [x] Create LSA with neighbors 
+    *  [x] Make flooding command to send LSA to network
+    *  [ ] Fix LSA handle
+    *  [ ] Dijkstra
+    *  [ ] Routing Table
+    *
+    *  [ ] IP Module (Forwarding)
+    *  [ ] Document code
+    *  [ ] Test
+    */
+    command void LinkState.start() {
         // Create initial LinkState i.e. (D, 0, D)
         makeLS(&linkState, TOS_NODE_ID, 0, TOS_NODE_ID);
         call ConfirmedList.pushback(linkState);
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
-        if (call LinkStateTimer.isRunning() == FALSE) {
-            // A random element of delay is included to prevent congestion.
-            call LinkStateTimer.startOneShot(30000);
-        }
-        
-        keys = call NeighborDiscovery.getNeighbors();
-        
-        for (i; i < call NeighborDiscovery.size(); i++) {
-            dbg(NEIGHBOR_CHANNEL, "Node %d's neighbors %d\n", TOS_NODE_ID, keys[i]);
-        }
-
-        payload = &linkStateAdvertisement;
-        makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
-        call Flooding.pingHandle(&sendPackage);
-
+        call LinkStateTimer.startOneShot(30000);
     }
 
     // Add new link state to the confirmed list
@@ -71,14 +56,14 @@ implementation{
 
     // update our tentative list of link states
     void updateTentativeList(LS *linkstate) {
-        uint8_t i = 0;
+        uint8_t i;
 
         // check if the tentative list if empty
         if (call TentativeList.isEmpty()) {
             // push new link state to end of tentative list
             call TentativeList.pushback(*linkstate);
         } else {
-            for (i; i < call TentativeList.size(); i++) {
+            for (i = 0; i < call TentativeList.size(); i++) {
                 // generate a temporary link state
                 LS temp = call TentativeList.get(i);
                 
@@ -98,11 +83,11 @@ implementation{
 
     // remove a link state from the tentative list
     void removeFromTentativeList(LS *linkstate) {
-        uint8_t i = 0;
+        uint8_t i;
 
         // check if the tentative list and temporary list are empty
         if (!call TentativeList.isEmpty() && !call TemporaryList.isEmpty()) {
-            for (i; i < call TentativeList.size(); i++) {
+            for (i = 0; i < call TentativeList.size(); i++) {
                 LS temp = call TentativeList.get(i);
 
                 // only remove the 
@@ -117,7 +102,7 @@ implementation{
         call TentativeList.popfront();
 
         if (!call TentativeList.isEmpty() && !call TemporaryList.isEmpty()) {
-            for (i; i < call TemporaryList.size(); i++) {
+            for (i = 0; i < call TemporaryList.size(); i++) {
                 call TentativeList.pushback(call TemporaryList.get(i));
             }
         } else {
@@ -131,6 +116,11 @@ implementation{
         uint8_t cost;
 
         if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0) {
+            /*
+             * 1) Get the package
+             * 2) set a var equal to the payload
+             * 3) Store the payload tuples in our tentative list
+             */
             dest = *package->payload;
             src = package->src;
             cost = package->seq + 1;
@@ -140,9 +130,9 @@ implementation{
     }
 
     command void LinkState.printRoutingTable() {
-        uint8_t i = 0;
+        uint8_t i;
 
-        for (i; i < call ConfirmedList.size(); i++) {
+        for (i = 0; i < call ConfirmedList.size(); i++) {
             dbg(ROUTING_CHANNEL, "%d\n", call ConfirmedList.get(i));
         }
     }
@@ -153,6 +143,24 @@ implementation{
     }
 
     event void LinkStateTimer.fired() {
+        uint8_t i;
+        LSA *temp;
+        uint32_t *neighbors = call NeighborDiscovery.getNeighbors();
+        uint16_t neighborListSize = call NeighborDiscovery.size();
+        LSATuple LSAT;
+        LSATuple LSATList[neighborListSize];
+        
+        for (i = 0; i < neighborListSize; i++) {
+            makeLSATuple(&LSAT, neighbors[i], 1);
 
+            //*(LSATList + i) = LSAT; // LSAList[i] = LSAT
+            LSATList[i] = LSAT;
+        }
+        
+        makeLSA(&linkStateAdvertisement, TOS_NODE_ID, 0, LSATList);
+        //payload stores the address of linkStateAdvertisement which is type LSA.
+        // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
+        makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        call Flooding.LSAHandle(&sendPackage);
     }
 }

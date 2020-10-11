@@ -29,7 +29,7 @@ implementation {
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
 
         // UNCOMMENT THIS FOR DYNMAIC NEIGHBOR TABLE
-        call updateNeighborTable.startPeriodic(30000); //update evey 30 seconds 
+        //call updateNeighborTable.startPeriodic(30000); //update evey 30 seconds 
     }
 
     command void NeighborDiscovery.pingHandle(pack * package) {
@@ -55,15 +55,23 @@ implementation {
 
     command error_t NeighborDiscovery.print() {
         uint16_t i;
-        uint16_t tableSize = call Hashmap.size();
-        uint32_t *keyPtr = call Hashmap.getKeys();
+        uint16_t tableSize;
+        uint32_t *keyPtr;
 
-        for (i = 0; i < tableSize; i++) {
-            dbg(GENERAL_CHANNEL, "Neighbors: %d\n", keyPtr[i]); 
+        if (!call Hashmap.isEmpty()) {
+            tableSize = call Hashmap.size();
+            keyPtr = call Hashmap.getKeys();
+
+            for (i = 0; i < tableSize; i++) {
+                dbg(GENERAL_CHANNEL, "Neighbors: %d\n", keyPtr[i]); 
+            }
+
+            dbg(NEIGHBOR_CHANNEL, "\n");
+            
+            return SUCCESS;
         }
 
-        dbg(NEIGHBOR_CHANNEL, "\n");
-        
+        return FAIL;
     }
 
     // Need to implement timer so that neighbor table is updated

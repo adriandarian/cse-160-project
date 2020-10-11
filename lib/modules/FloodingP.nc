@@ -7,6 +7,7 @@
 #include "../../includes/channels.h" // For printing debug statements
 #include "../../includes/packet.h"
 #include "../../includes/protocol.h"
+#include "../../includes/linkstate.h"
 
 module FloodingP {
     provides interface Flooding;
@@ -16,6 +17,7 @@ module FloodingP {
 }
 
 implementation {
+    uint16_t broadcastDest = 666;
     uint16_t sequenceNumber = 0;
     pack sendPackage;
     
@@ -63,6 +65,8 @@ implementation {
         package.seq = sequenceNumber++;
         package.TTL = MAX_TTL;
         call Sender.send(package, AM_BROADCAST_ADDR);
+
+        return SUCCESS;
     }
 
     command void Flooding.pingHandle(pack* message) {
@@ -103,11 +107,43 @@ implementation {
                 makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }
-        } else if (message->protocol == PROTOCOL_LINKED_STATE) {
-            dbg(ROUTING_CHANNEL, "Link State got here\n");
-        }
+        } 
 
         return;
+    }
+
+
+    command void Flooding.LSAHandle(pack* message) {
+        LSA *payload = message->payload;
+        LSATuple *LinkStates = payload->linkStates;
+        logPack(message);
+
+        dbg(ROUTING_CHANNEL, "Payload: %d\n", LinkStates[0]);
+        /*
+        * 1) Get flooding package
+        * 2) Access tuple list
+        * 3) For every tuple in the list
+        * 4) set next hop to TOS_NODE_ID
+        * 5) Forward the packet
+        */
+        if (message->protocol == PROTOCOL_LINKED_STATE) {
+            // Have we seen the node before
+            if (message->TTL <= 0 || searchForPackage(message)) {
+                // Drop the packet if we've seen it or if it's TTL has run out: i.e. do nothing
+                dbg(FLOODING_CHANNEL, "Package in node %d already inside of cache, proceeding to drop\n", TOS_NODE_ID);
+                return;
+            } else {
+                dbg(FLOODING_CHANNEL, "Flooding at node %d\n", TOS_NODE_ID);
+
+                // Re-validate list of seen nodes 
+                pushToFloodingList(message);
+                
+                // Send off package to next node in network
+                makePack(&sendPackage, message->src, broadcastDest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                call Sender.send(sendPackage, AM_BROADCAST_ADDR);
+            }
+        } 
+
     }
 }
 
