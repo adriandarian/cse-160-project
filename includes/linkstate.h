@@ -38,7 +38,8 @@ void makeLSA(LSA *linkStateAdvertisement, uint16_t source, uint16_t sequence, LS
 	dbg(ROUTING_CHANNEL, "source: %d, sequence: %d, link states: %d\n", source, sequence, linkStates[0].neighborAddress);
 	linkStateAdvertisement->source = source;
 	linkStateAdvertisement->sequence = sequence;
-	memcpy(linkStateAdvertisement->linkStates, &linkStates, MAX_LINK_STATE);
+	// memcpy(linkStateAdvertisement->linkStates, &linkStates, MAX_LINK_STATE); //retake 31 my guy lmao
+	memcpy(linkStateAdvertisement->linkStates, linkStates, MAX_LINK_STATE);
 }
 
 #endif
