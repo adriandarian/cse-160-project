@@ -130,16 +130,17 @@ implementation{
     * TODO: 
     *  [] Check if packet is already recieved. If not store in tentative with +1 to cost (also with the +1 to cost and sequence num)
     */
-        LSA *recievedLSA;
+        LSA *recievedLSA = package->payload;
         uint8_t dest;
         uint8_t src;
         uint8_t cost;
-        uint16_t linkStateSize;
+        uint16_t lsSize = recievedLSA->linkStateSize;
        // uint16_t packSeqNum = package->seq; //packageSeqNum
         uint16_t seqNum;
         uint8_t i;
         LSATuple LSAT;
-        LSATuple LSATList[linkStateSize];
+        LSATuple LSATList[lsSize];
+        dbg(ROUTING_CHANNEL, "dbg linkStateSize: %d\n", lsSize);
         
         
         if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0 && !searchForPackage(package)) {
@@ -150,25 +151,27 @@ implementation{
              * 3) Store the payload tuples in our tentative list
              */
 
-            recievedLSA = package->payload;
+            
             seqNum = recievedLSA->sequence;
-            linkStateSize = recievedLSA->linkStateSize;
+            
+            
             dbg(ROUTING_CHANNEL, "Recived packet regarding: %d\n", recievedLSA->linkStates[0].neighborAddress);
-            for(i = 0; i < linkStateSize; i++){
-                dest = recievedLSA->linkStates[i].neighborAddress;
-                cost = recievedLSA->linkStates[i].cost+1;
-                src = package->src;
-                //Insert into TentativeList:
-                makeLS(&linkState, dest, cost, src);
-                updateTentativeList(&linkState);
-                //Prepare tuples for forwarding:
-                makeLSATuple(&LSAT, dest, cost);
-                LSATList[i] = LSAT;
-            }
-            seqNum++;
-            makeLSA(&linkStateAdvertisement, TOS_NODE_ID, seqNum, LSATList, linkStateSize);
-            makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
-            call Flooding.LSAHandle(&sendPackage);
+            // for(i = 0; i < lsSize; i++){
+            //     dbg(ROUTING_CHANNEL, "dbg counter: %d\n", i);
+            //     // dest = recievedLSA->linkStates[i].neighborAddress;
+            //     // cost = recievedLSA->linkStates[i].cost+1;
+            //     // src = package->src;
+            //     // //Insert into TentativeList:
+            //     // makeLS(&linkState, dest, cost, src);
+            //     // updateTentativeList(&linkState);
+            //     // //Prepare tuples for forwarding:
+            //     // makeLSATuple(&LSAT, dest, cost);
+            //     // LSATList[i] = LSAT;
+            // }
+        //     seqNum++;
+        //     makeLSA(&linkStateAdvertisement, TOS_NODE_ID, seqNum, LSATList, lsize);
+        //     makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        //     call Flooding.LSAHandle(&sendPackage);
             
         }
     }
