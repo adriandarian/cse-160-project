@@ -20,6 +20,12 @@ module NeighborDiscoveryP {
 
 implementation {
     
+    /*
+     * #######################################
+     *              Commands
+     * #######################################
+     */
+
     // print debug indicating that import was successful for now
     command error_t NeighborDiscovery.start() {
         pack package;
@@ -29,11 +35,11 @@ implementation {
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
 
         // UNCOMMENT THIS FOR DYNMAIC NEIGHBOR TABLE
-        //call updateNeighborTable.startPeriodic(30000); //update evey 30 seconds 
+        call updateNeighborTable.startPeriodic(30000); //update evey 30 seconds 
     }
 
     command void NeighborDiscovery.pingHandle(pack * package) {
-        if (package->protocol == PROTOCOL_NEIGHBOR_PING && package->TTL >0) {
+        if (package->protocol == PROTOCOL_NEIGHBOR_PING && package->TTL > 0) {
             // Use the same package in the reply, so decrease the TTL by 1 and set the source to this TOS_NODE_ID
             // Also change the protocol to a ping reply so when the neighboring nodes recive it they dont forward it
             uint16_t dest = package->src;
@@ -74,6 +80,20 @@ implementation {
         return FAIL;
     }
 
+    command uint16_t NeighborDiscovery.size() {
+        return call Hashmap.size();
+    }
+
+    command uint32_t* NeighborDiscovery.getNeighbors() {
+        return call Hashmap.getKeys();
+    }
+
+    /*
+     * #######################################
+     *              Events
+     * #######################################
+     */
+
     // Need to implement timer so that neighbor table is updated
     event void updateNeighborTable.fired() {
         uint16_t i;
@@ -102,12 +122,4 @@ implementation {
     }
 
     event void updateTimer.fired() {}
-
-    command uint16_t NeighborDiscovery.size() {
-        return call Hashmap.size();
-    }
-
-    command uint32_t* NeighborDiscovery.getNeighbors() {
-        return call Hashmap.getKeys();
-    }
 }

@@ -10,12 +10,14 @@
 module LinkStateP{
     provides interface LinkState;
 
+    // Modules
+    uses interface Timer<TMilli> as LinkStateTimer;
     uses interface SimpleSend as LinkStateSender;
     uses interface Flooding;
     uses interface NeighborDiscovery;
-    uses interface List<pack> as RecievedList;
-    uses interface Timer<TMilli> as LinkStateTimer;
 
+    // Data Structures
+    uses interface List<pack> as RecievedList;
     uses interface List<LS> as TemporaryList;
     uses interface List<LS> as TentativeList;
     uses interface List<LS> as ConfirmedList;
@@ -26,59 +28,286 @@ implementation{
     LSA linkStateAdvertisement;
     pack sendPackage;
     uint8_t payload;
-    
 
     /*
     * TODO: 
     *  [x] Create LSA with neighbors 
     *  [x] Make flooding command to send LSA to network
-    *  [ ] Fix LSA handle
+    *  [] Fix LSA handle
     *  [ ] Dijkstra
     *  [ ] Routing Table
     *  [ ] IP Module (Forwarding)
     *  [ ] Document code
     *  [ ] Test
     */
+
+    /*
+     * #######################################
+     *              Prototypes
+     * #######################################
+     */
+    
+    void updateConfirmedList(LS linkstate);
+    void updateTentativeList(LS *incomingLinkState);
+    LS getLowestCost();
+    void removeFromTentativeList(LS *linkstate);
+    bool searchForPackage(pack package);
+    void printLSA(LSA* LSAdvertisement);
+    void findShortestPath();
+    void printTentativeList();
+    void printConfirmedList();
+
+    /*
+     * #######################################
+     *              Commands
+     * #######################################
+     */
+
     command void LinkState.start() {
         // Create initial LinkState i.e. (D, 0, D)
         makeLS(&linkState, TOS_NODE_ID, 0, TOS_NODE_ID);
         call ConfirmedList.pushback(linkState);
+        printConfirmedList();
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
         call LinkStateTimer.startOneShot(30000);
+
+        return;
+    }
+
+    // On LSA recieved
+    command void LinkState.LSHandler(pack *package) {
+        /*
+        * TODO: 
+        *  [X] Check if packet is already recieved. If not store in tentative with +1 to cost (also with the +1 to cost and sequence num)
+        */
+        LSA *recievedLSA = package->payload;
+        uint16_t TTL = package->TTL - 1;
+        uint8_t destination;
+        uint8_t source;
+        uint8_t cost;
+        uint16_t linkStateSize = recievedLSA->linkStateSize;
+        uint16_t packageSeqNum = package->seq; // packageSeqNum
+        uint16_t sequenceNumber;
+        uint8_t i;
+        LSATuple LSAT;
+        LSATuple LSATList[linkStateSize];        
+        
+        call RecievedList.pushback(*package);
+
+        if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0 && searchForPackage(*package)) {
+            /*
+            * 1) Get the package
+            * 2) set a var equal to the payload
+            * 3) Store the payload tuples in our tentative list
+            */
+            // Check if package is already recieved
+            sequenceNumber = recievedLSA->sequence;
+            
+            for (i = 0; i < linkStateSize; i++) {
+                destination = recievedLSA->linkStates[i].neighborAddress;
+                cost = recievedLSA->linkStates[i].cost + 1;
+                source = package->src;
+                
+                if (destination != TOS_NODE_ID) {
+                    // Insert into TentativeList:
+                    makeLS(&linkState, destination, cost, source);  
+
+                    /*
+                     * TODO: Fix the below 2 lines
+                     */
+
+                    // updateConfirmedList(getLowestCost());
+                    // removeFromTentativeList(getLowestCost());
+
+                    updateTentativeList(&linkState);
+
+                    // Prepare tuples for forwarding:
+                    makeLSATuple(&LSAT, destination, cost);
+                    LSATList[i] = LSAT;
+                } else {
+                    LSATList[i] = recievedLSA->linkStates[i];
+                }
+            }
+
+            // if (call TentativeList.size() > 13) {
+                dbg(ROUTING_CHANNEL, "\n");
+                dbg(ROUTING_CHANNEL, "-------------------------------Tentative List Start-------------------------------\n");
+                printTentativeList();
+                dbg(ROUTING_CHANNEL, "-------------------------------Tentative List End---------------------------------\n\n");
+            // }
+
+            // dbg(ROUTING_CHANNEL, "\n");
+            // dbg(ROUTING_CHANNEL, "-------------------------------Confirmed List Start-------------------------------\n");
+            // printConfirmedList();
+            // dbg(ROUTING_CHANNEL, "-------------------------------Confirmed List End---------------------------------\n\n");
+            
+            
+            sequenceNumber++;
+            
+            makeLSA(&linkStateAdvertisement, TOS_NODE_ID, sequenceNumber, LSATList, linkStateSize);
+            
+            makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, TTL, PROTOCOL_LINKED_STATE, packageSeqNum, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+            
+            call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
+            packageSeqNum++;
+            // call Flooding.LSAHandle(&sendPackage);
+        }
+
+        return;
+    }
+
+    command void LinkState.printRoutingTable() {
+        uint8_t i;
+
+        for (i = 0; i < call ConfirmedList.size(); i++) {
+            dbg(ROUTING_CHANNEL, "%d\n", call ConfirmedList.get(i));
+        }
+
+        return;
+    }
+
+    /*
+     * #######################################
+     *              Events
+     * #######################################
+     */
+    
+    event void LinkStateTimer.fired() {
+        uint8_t i;
+        uint32_t *neighbors = call NeighborDiscovery.getNeighbors();
+        uint16_t neighborListSize = call NeighborDiscovery.size();
+        LSATuple LSAT;
+        LS tempLS;
+        LSATuple LSATList[neighborListSize];
+        
+        for (i = 0; i < neighborListSize; i++) {
+            makeLSATuple(&LSAT, neighbors[i], 1);
+            makeLS(&tempLS, LSAT.neighborAddress, LSAT.cost, LSAT.neighborAddress);
+            updateTentativeList(&tempLS);
+            LSATList[i] = LSAT;
+        }
+
+        makeLSA(&linkStateAdvertisement, TOS_NODE_ID, 0, LSATList, neighborListSize);
+
+        // payload stores the address of linkStateAdvertisement which is type LSA.
+        // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
+        makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        
+        call Flooding.LSAHandle(&sendPackage);
+
+        return;
+    }
+
+    /*
+     * #######################################
+     *              Methods
+     * #######################################
+     */
+
+    void printTentativeList() {
+        uint8_t i;
+        LS temp;
+        uint16_t size;
+        
+        if (!call TentativeList.isEmpty()) {
+            size = call TentativeList.size();
+
+            for (i = 0; i < size; i++) {
+                temp = call TentativeList.get(i);
+                dbg(ROUTING_CHANNEL, "Tenative List State[%d] at src %d: [destination: %d, cost: %d, nextHop: %d], size: %d\n", i, TOS_NODE_ID, temp.destination, temp.cost, temp.nextHop, size);
+            }
+        }
+
+        return;
+    }
+
+    void printConfirmedList() {
+        uint8_t i;
+        LS temp;
+        uint16_t size;
+        
+        if (!call ConfirmedList.isEmpty()) {
+            size = call ConfirmedList.size();
+
+            for (i = 0; i < size; i++) {
+                temp = call ConfirmedList.get(i);
+                dbg(ROUTING_CHANNEL, "Confirmed List State[%d]: [destination: %d, cost: %d, nextHop: %d], size: %d\n", i, temp.destination, temp.cost, temp.nextHop, size);
+            }
+        }
+
+        return;
     }
 
     // Add new link state to the confirmed list
     void updateConfirmedList(LS linkstate) {
         call ConfirmedList.pushback(linkstate);
+        return;
     }
 
     // update our tentative list of link states
-    void updateTentativeList(LS *linkstate) {
+    void updateTentativeList(LS *incomingLinkState) {
+        uint16_t size = call TentativeList.size();
         uint8_t i;
+        LS currentLinkState;
+        uint8_t shouldPush = 1;
 
         // check if the tentative list if empty
         if (call TentativeList.isEmpty()) {
             // push new link state to end of tentative list
-            call TentativeList.pushback(*linkstate);
+            call TentativeList.pushback(*incomingLinkState);
         } else {
-            for (i = 0; i < call TentativeList.size(); i++) {
+            for (i = 0; i < size; i++) {
                 // generate a temporary link state
-                LS temp = call TentativeList.get(i);
-                
+                currentLinkState = call TentativeList.get(i);
+
                 /*
-                 * if the link state's destination is equal to the link state we want to update, 
-                 * then update the cost and nextHop values 
-                 */
-                if (temp.destination == linkstate->destination) {
-                    if (linkstate->cost < temp.cost) {
-                        temp.cost = linkstate->cost;
-                        temp.nextHop = linkstate->nextHop;
+                * if the link state's destination is equal to the link state we want to update, 
+                * then update the cost and nextHop values 
+                */
+                if (currentLinkState.destination == incomingLinkState->destination) {
+                    if (incomingLinkState->cost < currentLinkState.cost) {
+                        currentLinkState.cost = incomingLinkState->cost;
+                        currentLinkState.nextHop = incomingLinkState->nextHop;
                     }
+
+                    shouldPush = 0;
                 }
             }
+
+            if (shouldPush) {
+                call TentativeList.pushback(*incomingLinkState);
+            }
         }
+
+        return;
+    }
+
+    LS getLowestCost() {
+        LS lowestCostTuple, temporaryLinkState;
+        uint8_t i = 0;
+        uint16_t size;
+
+        if (!call TentativeList.isEmpty()) {
+            size = call TentativeList.size();
+
+            do {
+                temporaryLinkState = call TentativeList.get(i);
+
+                if (i == 0) {
+                    lowestCostTuple = temporaryLinkState;
+                } else if (lowestCostTuple.cost > temporaryLinkState.cost) {
+                    lowestCostTuple = temporaryLinkState;
+                }
+
+                i++;
+            } while (i < size);
+        } else {
+            lowestCostTuple = call ConfirmedList.get(call ConfirmedList.size() - 1);
+        }
+
+        return lowestCostTuple;
     }
 
     // remove a link state from the tentative list
@@ -108,13 +337,16 @@ implementation{
         } else {
             dbg(ROUTING_CHANNEL, "Failed to remove linkstate with destination %d from TentativeList\n", linkstate->destination);
         }
+
+        return;
     }
-        bool searchForPackage(pack *package) {
+
+    bool searchForPackage(pack package) {
         uint16_t i = 0, RecievedListSize = call RecievedList.size();
         while (i < RecievedListSize) {
           pack temporaryPackage = call RecievedList.get(i);
 
-          if (temporaryPackage.src == package->src && temporaryPackage.dest == package->dest && temporaryPackage.seq == package->seq) {
+          if (temporaryPackage.src == package.src && temporaryPackage.seq == package.seq && temporaryPackage.protocol == package.protocol) {
             return TRUE;
           }
 
@@ -123,99 +355,22 @@ implementation{
 
         return FALSE;
     };
-    //On LSA recieved
-    command void LinkState.LSHandler(pack *package) {
-        
-    /*
-    * TODO: 
-    *  [] Check if packet is already recieved. If not store in tentative with +1 to cost (also with the +1 to cost and sequence num)
-    */
-        LSA *recievedLSA = package->payload;
-        uint8_t dest;
-        uint8_t src;
-        uint8_t cost;
-        uint16_t lsSize = recievedLSA->linkStateSize;
-       // uint16_t packSeqNum = package->seq; //packageSeqNum
-        uint16_t seqNum;
+
+    void printLSA(LSA* LSAdvertisement) {
         uint8_t i;
-        LSATuple LSAT;
-        LSATuple LSATList[lsSize];
-        dbg(ROUTING_CHANNEL, "dbg linkStateSize: %d\n", lsSize);
-        
-        
-        if (package->protocol == PROTOCOL_LINKED_STATE && package->TTL > 0 && !searchForPackage(package)) {
-            
-            /*
-             * 1) Get the package
-             * 2) set a var equal to the payload
-             * 3) Store the payload tuples in our tentative list
-             */
+        uint16_t size = LSAdvertisement->linkStateSize;
+        LSATuple temp;
 
-            
-            seqNum = recievedLSA->sequence;
-            
-            
-            dbg(ROUTING_CHANNEL, "Recived packet regarding: %d\n", recievedLSA->linkStates[0].neighborAddress);
-            // for(i = 0; i < lsSize; i++){
-            //     dbg(ROUTING_CHANNEL, "dbg counter: %d\n", i);
-            //     // dest = recievedLSA->linkStates[i].neighborAddress;
-            //     // cost = recievedLSA->linkStates[i].cost+1;
-            //     // src = package->src;
-            //     // //Insert into TentativeList:
-            //     // makeLS(&linkState, dest, cost, src);
-            //     // updateTentativeList(&linkState);
-            //     // //Prepare tuples for forwarding:
-            //     // makeLSATuple(&LSAT, dest, cost);
-            //     // LSATList[i] = LSAT;
-            // }
-        //     seqNum++;
-        //     makeLSA(&linkStateAdvertisement, TOS_NODE_ID, seqNum, LSATList, lsize);
-        //     makePack(&sendPackage, TOS_NODE_ID, 0, 1, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
-        //     call Flooding.LSAHandle(&sendPackage);
-            
+        for (i = 0; i < size; i++) {
+            temp = LSAdvertisement->linkStates[i];
+            dbg(ROUTING_CHANNEL, "LSA[%d]: [neighborAddress: %d, cost: %d], size %d\n", i, temp.neighborAddress, temp.cost, size);
         }
+
+        return;
     }
-
-    command void LinkState.printRoutingTable() {
-        uint8_t i;
-
-        for (i = 0; i < call ConfirmedList.size(); i++) {
-            dbg(ROUTING_CHANNEL, "%d\n", call ConfirmedList.get(i));
-        }
-    }
-
+    
     // Dijkstra's Implementation
     void findShortestPath() {
         
     }
-
-    event void LinkStateTimer.fired() {
-        uint8_t i;
-        LSA *temp;
-        uint32_t *neighbors = call NeighborDiscovery.getNeighbors();
-        uint16_t neighborListSize = call NeighborDiscovery.size();
-        LSATuple LSAT;
-        LSATuple LSATList[neighborListSize];
-        // for (i = 0; i < neighborListSize; i++){
-        //     LSATList[i]=0;    
-        // }
-        
-        for (i = 0; i < neighborListSize; i++) {
-            makeLSATuple(&LSAT, neighbors[i], 1);
-
-            //*(LSATList + i) = LSAT; // LSAList[i] = LSAT
-            LSATList[i] = LSAT;
-        }
-        makeLSA(&linkStateAdvertisement, TOS_NODE_ID, 0, LSATList, neighborListSize);
-
-       
-        dbg(ROUTING_CHANNEL, "Payload: %d\n", LSAT.cost);
-        //payload stores the address of linkStateAdvertisement which is type LSA.
-        // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
-        makePack(&sendPackage, TOS_NODE_ID, 0, 16, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
-        
-        call Flooding.LSAHandle(&sendPackage);
-    }
-
-
 }

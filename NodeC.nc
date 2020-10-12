@@ -19,6 +19,12 @@ implementation {
 
     Node->MainC.Boot;
 
+    /*
+     * #######################################
+     *              Modules
+     * #######################################
+     */
+
     components new AMReceiverC(AM_PACK) as GeneralReceive;
     Node.Receive->GeneralReceive;
 

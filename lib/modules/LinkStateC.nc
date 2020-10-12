@@ -11,6 +11,12 @@ implementation{
     components LinkStateP;
     LinkState = LinkStateP;
 
+    /*
+     * #######################################
+     *              Modules
+     * #######################################
+     */
+
     components new SimpleSendC(AM_PACK);
     LinkStateP.LinkStateSender->SimpleSendC;
 
@@ -22,6 +28,12 @@ implementation{
 
     components new TimerMilliC() as LinkStateTimerC;
     LinkStateP.LinkStateTimer->LinkStateTimerC;
+
+    /*
+     * #######################################
+     *              Data Structures
+     * #######################################
+     */
 
     components new ListC(LS, 64) as TemporaryListC;
     LinkStateP.TemporaryList->TemporaryListC;

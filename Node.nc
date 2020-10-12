@@ -42,6 +42,8 @@ implementation{
          
          // Initialize Neighbor Discovery as each node awakes
          call NeighborDiscovery.start();
+
+         // Initializes Link State but has a delay to wait for the initial Neighbor Discovery to finish
          call LinkState.start();
       } else {
          // Retry until successful
