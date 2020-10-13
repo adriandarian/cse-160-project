@@ -52,4 +52,7 @@ implementation{
 
     components new ListC(pack, 64) as RecievedList;
     LinkStateP.RecievedList->RecievedList;
+
+    components new HashmapC(uint16_t, 100) as RoutingTableC;
+    LinkStateP.RoutingTable->RoutingTableC;
 }

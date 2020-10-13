@@ -55,6 +55,13 @@ implementation {
         return SUCCESS;
     }
 
+    command error_t Flooding.sequenceIncreaserSender(pack package, uint16_t destination) {
+        package.src = sequenceNumber++;
+        call Sender.send(package, destination);
+
+        return SUCCESS;
+    }
+
     command void Flooding.pingHandle(pack* message) {
         if (message->protocol == PROTOCOL_PING) {
             // Have we seen the node before

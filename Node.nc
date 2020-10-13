@@ -87,7 +87,7 @@ implementation{
       if (call RoutingTable.contains(destination)) {
          // Execute Flooding
          makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-         call Sender.send(sendPackage, call RoutingTable.get(destination));
+         call Flooding.sequenceIncreaserSender(sendPackage, call RoutingTable.get(destination));
       } else {
          // Execute Flooding
          makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);

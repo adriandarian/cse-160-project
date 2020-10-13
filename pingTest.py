@@ -29,12 +29,12 @@ def main():
 
     s.ping(1, 5, "1->5")
     s.runTime(20)
-    # s.ping(1, 5, "1->5")
-    # s.runTime(20)
-    # s.ping(1, 5, "1->5")
-    # s.runTime(20)
-    # s.ping(1, 5, "1->5")
-    # s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
 
     # Print all neighbors in Topology
     # for i in range(s.numMote + 1):

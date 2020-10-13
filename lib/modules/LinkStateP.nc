@@ -23,6 +23,7 @@ module LinkStateP{
     uses interface List<LS> as TemporaryList;
     uses interface List<LS> as TentativeList;
     uses interface List<LS> as ConfirmedList;
+    uses interface Hashmap<uint16_t> as RoutingTable;
 }
 
 implementation{
@@ -106,12 +107,18 @@ implementation{
     }
 
     command void LinkState.printRoutingTable() {
-        dbg(ROUTING_CHANNEL, "\n");
-        dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d Start------------------------\n", TOS_NODE_ID);
-        printConfirmedList();
-        dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d End--------------------------\n\n", TOS_NODE_ID);
+        // dbg(ROUTING_CHANNEL, "\n");
+        // dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d Start------------------------\n", TOS_NODE_ID);
+        // printConfirmedList();
+        // dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d End--------------------------\n\n", TOS_NODE_ID);
             
-        printTentativeList();
+        // printTentativeList();
+
+        int i = 0;
+
+        for (i = 1; i <= call RoutingTable.size(); i++) {
+            dbg(GENERAL_CHANNEL, "Dest: %d \t firstHop: %d\n", i, call RoutingTable.get(i));
+        }
 
         return;
     }
@@ -365,7 +372,107 @@ implementation{
     }
     
     // Dijkstra's Implementation
+    // Source Reference - https://www.thecrazyprogrammer.com/2014/03/dijkstra-algorithm-for-finding-shortest-path-of-a-graph.html
     void findShortestPath() {
-        
+        uint16_t nodesize[20];
+        uint16_t size = call LinkTable.size();
+        uint16_t maximumNode = 20;
+        uint16_t i;
+        uint16_t j;
+        uint16_t nextHop;
+        uint16_t costMatrix[maximumNode][maximumNode];
+        uint16_t distanceList[maximumNode];
+        uint16_t predicateList[maximumNode];
+        uint16_t visitedList[maximumNode];
+        uint16_t nodeCount;
+        uint16_t minimumDistance;
+        uint16_t nextNode;
+        uint16_t startNode = TOS_NODE_ID;
+        bool adjacencyMatrix[maximumNode][maximumNode];
+        LS linkstate;
+
+        for (i = 0; i < maximumNode; i++) {
+            for (j = 0; j < maximumNode; j++) {
+                adjacencyMatrix[i][j] = FALSE;
+            }
+        }
+
+        for (i = 0; i < size; i++) {
+            linkstate = call LinkTable.get(i);
+            adjacencyMatrix[linkstate.nextHop][linkstate.destination] = TRUE;
+        }
+
+        // predicateList[] stores the predecessor of each node
+        // count gives the number of nodes seen so far
+        // create the cost matrix
+        for (i = 0; i < size; i++) {
+            for (j = 0; j < maximumNode; j++) {
+                if (adjacencyMatrix[i][j] == 0) {
+                    costMatrix[i][j] = 9999;
+                } else {
+                    costMatrix[i][j] = adjacencyMatrix[i][j];
+                }
+            }
+        }
+
+        // initialize predicateList[], distanceList[] and visitedlist[]
+        for (i = 0; i < maximumNode; i++) {
+            distanceList[i] = costMatrix[startNode][i];
+            predicateList[i] = startNode;
+            visitedList[i] = 0;
+        }
+
+        distanceList[startNode] = 0;
+        visitedList[startNode] = 1;
+        nodeCount = 1;
+
+        while (nodeCount < maximumNode - 1) {
+            minimumDistance = 9999;
+
+            for (i = 0; i < maximumNode; i++) {
+                // nextNode gives the node at minimum distance
+                if (distanceList[i] <= minimumDistance && !visitedList[i]) {
+                    minimumDistance = distanceList[i];
+                    nextNode = i;
+                }
+            }
+
+            visitedList[nextNode] = i;
+
+            for (i = 0; i < maximumNode; i++) {
+                if (!visitedList[i]) {
+                    if (minimumDistance + costMatrix[nextNode][i] < distanceList[i]) {
+                        distanceList[i] = minimumDistance + costMatrix[nextNode][i];
+                        predicateList[i] = nextNode;
+                    }
+                }
+            }
+
+            nodeCount++;
+        }
+
+        for (i = 0; i < maximumNode; i++) {
+            nextHop = TOS_NODE_ID;
+
+            if (distanceList[i] != 9999) {
+                if (i != startNode) {
+                    j = 1;
+
+                    do {
+                        if (j != startNode) {
+                            nextHop = j;
+                        }
+
+                        j = predicateList[j];
+                    } while (j != startNode);
+                } else {
+                    nextHop = startNode;
+                }
+
+                if (nextHop != 0) {
+                    call RoutingTable.insert(i, nextHop);
+                }
+            }
+        }
     }
 }
