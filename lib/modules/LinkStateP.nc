@@ -12,6 +12,7 @@ module LinkStateP{
 
     // Modules
     uses interface Timer<TMilli> as LinkStateTimer;
+    uses interface Timer<TMilli> as RoutingTableTimer;
     uses interface SimpleSend as LinkStateSender;
     uses interface Flooding;
     uses interface NeighborDiscovery;
@@ -47,10 +48,10 @@ implementation{
      * #######################################
      */
     
-    void updateConfirmedList(LS linkstate);
-    void updateTentativeList(LS *incomingLinkState);
     LS getLowestCost();
-    void removeFromTentativeList(LS *linkstate);
+    void updateConfirmedList(LS incomingLinkState);
+    void updateTentativeList(LS incomingLinkState);
+    void removeFromTentativeList(LS linkstate);
     bool searchForPackage(pack package);
     void printLSA(LSA* LSAdvertisement);
     void findShortestPath();
@@ -67,11 +68,12 @@ implementation{
         // Create initial LinkState i.e. (D, 0, D)
         makeLS(&linkState, TOS_NODE_ID, 0, TOS_NODE_ID);
         call ConfirmedList.pushback(linkState);
-        printConfirmedList();
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
         call LinkStateTimer.startOneShot(30000);
+
+        call RoutingTableTimer.startOneShot(120000);
 
         return;
     }
@@ -114,14 +116,7 @@ implementation{
                     // Insert into TentativeList:
                     makeLS(&linkState, destination, cost, source);  
 
-                    /*
-                     * TODO: Fix the below 2 lines
-                     */
-
-                    // updateConfirmedList(getLowestCost());
-                    // removeFromTentativeList(getLowestCost());
-
-                    updateTentativeList(&linkState);
+                    updateTentativeList(linkState);
 
                     // Prepare tuples for forwarding:
                     makeLSATuple(&LSAT, destination, cost);
@@ -131,18 +126,8 @@ implementation{
                 }
             }
 
-            // if (call TentativeList.size() > 13) {
-                dbg(ROUTING_CHANNEL, "\n");
-                dbg(ROUTING_CHANNEL, "-------------------------------Tentative List Start-------------------------------\n");
-                printTentativeList();
-                dbg(ROUTING_CHANNEL, "-------------------------------Tentative List End---------------------------------\n\n");
-            // }
-
-            // dbg(ROUTING_CHANNEL, "\n");
-            // dbg(ROUTING_CHANNEL, "-------------------------------Confirmed List Start-------------------------------\n");
-            // printConfirmedList();
-            // dbg(ROUTING_CHANNEL, "-------------------------------Confirmed List End---------------------------------\n\n");
-            
+            // updateConfirmedList(getLowestCost());
+            // removeFromTentativeList(getLowestCost());
             
             sequenceNumber++;
             
@@ -159,11 +144,12 @@ implementation{
     }
 
     command void LinkState.printRoutingTable() {
-        uint8_t i;
-
-        for (i = 0; i < call ConfirmedList.size(); i++) {
-            dbg(ROUTING_CHANNEL, "%d\n", call ConfirmedList.get(i));
-        }
+        dbg(ROUTING_CHANNEL, "\n");
+        dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d Start------------------------\n", TOS_NODE_ID);
+        printConfirmedList();
+        dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d End--------------------------\n\n", TOS_NODE_ID);
+            
+        printTentativeList();
 
         return;
     }
@@ -180,12 +166,13 @@ implementation{
         uint16_t neighborListSize = call NeighborDiscovery.size();
         LSATuple LSAT;
         LS tempLS;
-        LSATuple LSATList[neighborListSize];
+        LSATuple LSATList[neighborListSize + 1];
         
         for (i = 0; i < neighborListSize; i++) {
             makeLSATuple(&LSAT, neighbors[i], 1);
             makeLS(&tempLS, LSAT.neighborAddress, LSAT.cost, LSAT.neighborAddress);
-            updateTentativeList(&tempLS);
+            updateTentativeList(tempLS);
+            updateConfirmedList(tempLS);
             LSATList[i] = LSAT;
         }
 
@@ -197,6 +184,11 @@ implementation{
         
         call Flooding.LSAHandle(&sendPackage);
 
+        return;
+    }
+
+    event void RoutingTableTimer.fired() {
+        call LinkState.printRoutingTable();
         return;
     }
 
@@ -241,13 +233,42 @@ implementation{
     }
 
     // Add new link state to the confirmed list
-    void updateConfirmedList(LS linkstate) {
-        call ConfirmedList.pushback(linkstate);
+    void updateConfirmedList(LS incomingLinkState) {
+        uint16_t size = call TentativeList.size();
+        uint8_t i;
+        LS currentLinkState;
+        uint8_t shouldPush = 1;
+
+        // check if the tentative list if empty
+        if (incomingLinkState.destination < 30) {
+            for (i = 0; i < size; i++) {
+                // generate a temporary link state
+                currentLinkState = call ConfirmedList.get(i);
+
+                /*
+                * if the link state's destination is equal to the link state we want to update, 
+                * then update the cost and nextHop values 
+                */
+                if (currentLinkState.destination == incomingLinkState.destination) {
+                    if (incomingLinkState.cost < currentLinkState.cost) {
+                        currentLinkState.cost = incomingLinkState.cost;
+                        currentLinkState.nextHop = incomingLinkState.nextHop;
+                    }
+
+                    shouldPush = 0;
+                }
+            }
+
+            if (shouldPush == 1) {
+                call ConfirmedList.pushback(incomingLinkState);
+            }
+        }
+
         return;
     }
 
     // update our tentative list of link states
-    void updateTentativeList(LS *incomingLinkState) {
+    void updateTentativeList(LS incomingLinkState) {
         uint16_t size = call TentativeList.size();
         uint8_t i;
         LS currentLinkState;
@@ -256,8 +277,8 @@ implementation{
         // check if the tentative list if empty
         if (call TentativeList.isEmpty()) {
             // push new link state to end of tentative list
-            call TentativeList.pushback(*incomingLinkState);
-        } else {
+            call TentativeList.pushback(incomingLinkState);
+        } else if (incomingLinkState.destination < 30) {
             for (i = 0; i < size; i++) {
                 // generate a temporary link state
                 currentLinkState = call TentativeList.get(i);
@@ -266,18 +287,18 @@ implementation{
                 * if the link state's destination is equal to the link state we want to update, 
                 * then update the cost and nextHop values 
                 */
-                if (currentLinkState.destination == incomingLinkState->destination) {
-                    if (incomingLinkState->cost < currentLinkState.cost) {
-                        currentLinkState.cost = incomingLinkState->cost;
-                        currentLinkState.nextHop = incomingLinkState->nextHop;
+                if (currentLinkState.destination == incomingLinkState.destination) {
+                    if (incomingLinkState.cost < currentLinkState.cost) {
+                        currentLinkState.cost = incomingLinkState.cost;
+                        currentLinkState.nextHop = incomingLinkState.nextHop;
                     }
 
                     shouldPush = 0;
                 }
             }
 
-            if (shouldPush) {
-                call TentativeList.pushback(*incomingLinkState);
+            if (shouldPush == 1) {
+                call TentativeList.pushback(incomingLinkState);
             }
         }
 
@@ -311,16 +332,16 @@ implementation{
     }
 
     // remove a link state from the tentative list
-    void removeFromTentativeList(LS *linkstate) {
+    void removeFromTentativeList(LS linkstate) {
         uint8_t i;
 
         // check if the tentative list and temporary list are empty
-        if (!call TentativeList.isEmpty() && !call TemporaryList.isEmpty()) {
+        if (!call TentativeList.isEmpty()) {
             for (i = 0; i < call TentativeList.size(); i++) {
                 LS temp = call TentativeList.get(i);
 
                 // only remove the 
-                if (temp.destination != linkstate->destination) {
+                if (temp.destination != linkstate.destination) {
                     call TemporaryList.pushback(temp);
                 }
 
@@ -328,14 +349,11 @@ implementation{
             }
         }
 
-        call TentativeList.popfront();
-
-        if (!call TentativeList.isEmpty() && !call TemporaryList.isEmpty()) {
+        if (!call TemporaryList.isEmpty()) {
             for (i = 0; i < call TemporaryList.size(); i++) {
                 call TentativeList.pushback(call TemporaryList.get(i));
+                call TemporaryList.popfront();
             }
-        } else {
-            dbg(ROUTING_CHANNEL, "Failed to remove linkstate with destination %d from TentativeList\n", linkstate->destination);
         }
 
         return;

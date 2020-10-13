@@ -29,6 +29,9 @@ implementation{
     components new TimerMilliC() as LinkStateTimerC;
     LinkStateP.LinkStateTimer->LinkStateTimerC;
 
+    components new TimerMilliC() as RoutingTableTimerC;
+    LinkStateP.RoutingTableTimer->RoutingTableTimerC;
+
     /*
      * #######################################
      *              Data Structures

@@ -27,8 +27,8 @@ def main():
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(20)
 
-    # s.ping(1, 5, "1->5")
-    # s.runTime(20)
+    s.ping(1, 5, "1->5")
+    s.runTime(20)
     # s.ping(1, 5, "1->5")
     # s.runTime(20)
     # s.ping(1, 5, "1->5")
