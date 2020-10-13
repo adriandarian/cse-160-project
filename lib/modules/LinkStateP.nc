@@ -73,7 +73,7 @@ implementation{
         // Start oneshot timer:
         call LinkStateTimer.startOneShot(30000);
 
-        call RoutingTableTimer.startOneShot(120000);
+        call RoutingTableTimer.startOneShot(180000);
 
         return;
     }
@@ -188,6 +188,14 @@ implementation{
     }
 
     event void RoutingTableTimer.fired() {
+        uint16_t i;
+
+        for (i = 0; i < call TentativeList.size(); i++) {
+            updateConfirmedList(call TentativeList.get(i));
+        }
+
+        call TentativeList.empty();
+
         call LinkState.printRoutingTable();
         return;
     }
@@ -208,7 +216,10 @@ implementation{
 
             for (i = 0; i < size; i++) {
                 temp = call TentativeList.get(i);
-                dbg(ROUTING_CHANNEL, "Tenative List State[%d] at src %d: [destination: %d, cost: %d, nextHop: %d], size: %d\n", i, TOS_NODE_ID, temp.destination, temp.cost, temp.nextHop, size);
+                
+                if (temp.destination > 0) {
+                    dbg(ROUTING_CHANNEL, "Tenative List State[%d] at src %d: [destination: %d, cost: %d, nextHop: %d], size: %d\n", i, TOS_NODE_ID, temp.destination, temp.cost, temp.nextHop, size);
+                }
             }
         }
 
