@@ -245,7 +245,7 @@ implementation{
 
     // Add new link state to the confirmed list
     void updateConfirmedList(LS incomingLinkState) {
-        uint16_t size = call TentativeList.size();
+        uint16_t size = call ConfirmedList.size();
         uint8_t i;
         LS currentLinkState;
         uint8_t shouldPush = 1;
