@@ -9,22 +9,24 @@
 #include <Timer.h>
 #include "includes/command.h"
 #include "includes/packet.h"
+#include "includes/linkstate.h"
 #include "includes/CommandMsg.h"
 #include "includes/sendInfo.h"
 #include "includes/channels.h"
 
 module Node{
+   // Modules
    uses interface Boot;
    uses interface SplitControl as AMControl;
    uses interface Receive;
-   
-   uses interface List<uint16_t> as List;
-
    uses interface SimpleSend as Sender;
    uses interface CommandHandler;
    uses interface NeighborDiscovery;
    uses interface Flooding;
    uses interface LinkState;
+   
+   // Data Structures
+   uses interface Hashmap<uint16_t> as RoutingTable;
 }
 
 implementation{
@@ -32,19 +34,17 @@ implementation{
 
    event void Boot.booted() {
       call AMControl.start();
-      dbg(GENERAL_CHANNEL, "Booted\n");
-      
+      // dbg(GENERAL_CHANNEL, "Booted\n");
+      // Initialize Neighbor Discovery as each node awakes
+      call NeighborDiscovery.start();
+
+      // Initializes Link State but has a delay to wait for the initial Neighbor Discovery to finish
+      call LinkState.start();
    }
 
    event void AMControl.startDone(error_t err) {
       if (err == SUCCESS) {
-         dbg(GENERAL_CHANNEL, "Radio On\n");
-         
-         // Initialize Neighbor Discovery as each node awakes
-         call NeighborDiscovery.start();
-
-         // Initializes Link State but has a delay to wait for the initial Neighbor Discovery to finish
-         call LinkState.start();
+         // dbg(GENERAL_CHANNEL, "Radio On\n");
       } else {
          // Retry until successful
          call AMControl.start();
@@ -70,7 +70,7 @@ implementation{
             // Handle Pings in Flooding Module
             call Flooding.pingHandle(message);
          } else if (message->protocol == PROTOCOL_LINKED_STATE) {
-            // Handle Pings in Link State Module
+            call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
          }
          
@@ -82,11 +82,17 @@ implementation{
    }
 
    event void CommandHandler.ping(uint16_t destination, uint8_t *payload) {
-      dbg(GENERAL_CHANNEL, "Ping sent to node %u from node %u\n", destination, TOS_NODE_ID);
+      dbg(GENERAL_CHANNEL, "Ping sent to node %d from node %d\n", destination, TOS_NODE_ID);
 
-      // Execute Flooding
-      makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-      call Flooding.send(sendPackage, destination);
+      if (call RoutingTable.contains(destination)) {
+         // Execute Flooding
+         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+         call Sender.send(sendPackage, call RoutingTable.get(destination));
+      } else {
+         // Execute Flooding
+         makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
+         call Flooding.send(sendPackage, destination);
+      }
    }
 
    event void CommandHandler.printNeighbors(uint16_t node) {

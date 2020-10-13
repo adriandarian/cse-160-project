@@ -38,6 +38,9 @@ implementation{
      * #######################################
      */
 
+    components new ListC(LSA, 64) as LinkTableC;
+    LinkStateP.LinkTable->LinkTableC;
+
     components new ListC(LS, 64) as TemporaryListC;
     LinkStateP.TemporaryList->TemporaryListC;
 

@@ -36,6 +36,6 @@ implementation{
      * #######################################
      */
 
-    components new HashmapC(uint16_t,100); //assuming less than 100 neighbors
+    components new HashmapC(uint16_t, 100);
     NeighborDiscoveryP.Hashmap->HashmapC;
 }
