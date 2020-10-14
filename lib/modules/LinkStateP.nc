@@ -80,7 +80,6 @@ implementation{
         // Start oneshot timer:
         call LinkStateTimer.startOneShot(30000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
 
-
         return;
     }
 
@@ -124,7 +123,7 @@ implementation{
 
         dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
         printf("{\ndestination: nextHop,\n");
-        for (i = 0; i < call RoutingTable.size(); i++) {
+        for (i = 0; i < call RoutingTable.size() + 1; i++) {
                 // printf("Path = %d", i);
                 
                 // j = i;
@@ -567,21 +566,37 @@ implementation{
             nodeCount++;
         }
 
-
         // TODO Fix the below
         // dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
         for (i = 0; i < maximumNode; i++) {
+            nextHop = TOS_NODE_ID;
             if (distanceList[i] != 11111) {
-                // printf("Distance of node %d = %d\n", i, distanceList[i]);
+                // printf("Distance to node %d has cost of %d\n", i, distanceList[i]);
                 // printf("Path = %d", i);
-                
-                // j = i;
-                // do {
-                //     j = predicateList[j];
-                //     printf("<-%d", j);
-                // } while (j != startNode);
-                // printf("\n");
-                call RoutingTable.insert(i, predicateList[i]);
+                if (i != startNode) {
+                    j = i;
+                    do {
+                        if (j != startNode) {
+                            nextHop = j;
+                        }
+
+                        j = predicateList[j];
+                        // printf("<-%d", j);
+                    } while (j != startNode);
+                    // printf("\n");
+                } else {
+                    nextHop = startNode;
+                    // j = i;
+                    // do {
+                    //     j = predicateList[j];
+                    //     printf("<-%d", j);
+                    // } while (j != startNode);
+                    // printf("\n");
+                }
+
+                // if (nextHop != 0) {
+                    call RoutingTable.insert(i, nextHop);
+                // }
             }
         }
 

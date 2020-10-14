@@ -71,6 +71,7 @@ implementation {
                 return;
             } else if (message->dest == TOS_NODE_ID) {
                 dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
+                logPack(message);
 
                 // Found its destination, does nothing if so
                 if (message->protocol == PROTOCOL_PING) {
@@ -97,7 +98,7 @@ implementation {
                 pushToFloodingList(message);
 
                 // Send off package to next node in network
-                makePack(&sendPackage, message->src, message->dest, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }
         } 
@@ -121,7 +122,7 @@ implementation {
                 
                 // Send off package to next node in network
 
-                makePack(&sendPackage, message->src, message->seq, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                makePack(&sendPackage, message->src, message->seq, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
 
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }

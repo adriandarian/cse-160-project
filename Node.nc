@@ -28,6 +28,7 @@ module Node{
 
 implementation{
    pack sendPackage;
+   uint16_t seqNum = 0;
 
    event void Boot.booted() {
       call AMControl.start();
@@ -65,7 +66,18 @@ implementation{
             call NeighborDiscovery.pingHandle(message);
          } else if (message->protocol == PROTOCOL_PING || message->protocol == PROTOCOL_PING_REPLY) {
             // Handle Pings in Flooding Module
-            call Flooding.pingHandle(message);
+            if (message->dest == TOS_NODE_ID) {
+               dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
+               logPack(message);
+            } else {
+               if (call LinkState.checkIfInRoutingTable(message->dest)) {
+                  // Execute Flooding
+                  makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, message->payload, PACKET_MAX_PAYLOAD_SIZE);
+                  call Sender.send(sendPackage, call LinkState.getFromRoutingTable(message->dest));
+               } else {
+                  call Flooding.pingHandle(message);
+               }
+            }
          } else if (message->protocol == PROTOCOL_LINKED_STATE) {
             call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
@@ -83,8 +95,9 @@ implementation{
 
       if (call LinkState.checkIfInRoutingTable(destination)) {
          // Execute Flooding
-         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
-         call Flooding.sequenceIncreaserSender(sendPackage, call LinkState.getFromRoutingTable(destination));
+         makePack(&sendPackage, TOS_NODE_ID, destination, MAX_TTL, PROTOCOL_PING, seqNum, payload, PACKET_MAX_PAYLOAD_SIZE);
+         seqNum = seqNum + 1;
+         call Sender.send(sendPackage, call LinkState.getFromRoutingTable(destination));
       } else {
          // Execute Flooding
          makePack(&sendPackage, TOS_NODE_ID, destination, 0, PROTOCOL_PING, 0, payload, PACKET_MAX_PAYLOAD_SIZE);
