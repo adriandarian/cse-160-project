@@ -27,6 +27,10 @@ def main():
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(20)
 
+    # Check Routing table
+    s.runTime(20)
+    s.routeDMP(0)
+
     s.ping(1, 5, "1->5")
     s.runTime(20)
     s.ping(1, 5, "1->5")
@@ -41,9 +45,7 @@ def main():
     #     s.runTime(20)
     #     s.neighborDMP(i)
     
-    # Check Routing table
-    s.runTime(20)
-    s.routeDMP(0)
+    
 
     s.runTime(20)
 

@@ -33,7 +33,7 @@ implementation{
     LSA linkStateAdvertisement;
     pack sendPackage;
     uint8_t payload;
-    uint16_t sequenceNum=0;
+    uint16_t sequenceNum = 0;
 
     /*
     * TODO: 
@@ -62,6 +62,7 @@ implementation{
     void findShortestPath();
     void printTentativeList();
     void printConfirmedList();
+    void printLinkTable();
 
     /*
      * #######################################
@@ -180,23 +181,10 @@ implementation{
     }
 
     event void RoutingTableTimer.fired() {
-        uint16_t i, j;
-        LSA currentLSA;
-
-        dbg(ROUTING_CHANNEL, "Src: %d with size %d [\n", TOS_NODE_ID, call LinkTable.size());
-        for (i = 0; i < call LinkTable.size(); i++) {
-            currentLSA = call LinkTable.get(i);
-
-            for (j = 0; j < currentLSA.linkStateSize; j++) {
-                if (currentLSA.linkStates[j].neighborAddress != 0) {
-                    dbg(ROUTING_CHANNEL, "S: %d (N: %d, C: %d)\n", currentLSA.source, currentLSA.linkStates[j].neighborAddress, currentLSA.linkStates[j].cost);
-                }
-            }
-        }
-        dbg(ROUTING_CHANNEL, "]\n");
-
-
         findShortestPath();
+        
+        // printLinkTable();
+        // call LinkState.printRoutingTable();
 
         return;
     }
@@ -398,13 +386,31 @@ implementation{
 
         return;
     }
+
+    void printLinkTable() {
+        uint16_t i, j;
+        LSA currentLSA;
+
+        dbg(ROUTING_CHANNEL, "Src: %d with size %d [\n", TOS_NODE_ID, call LinkTable.size());
+        for (i = 0; i < call LinkTable.size(); i++) {
+            currentLSA = call LinkTable.get(i);
+
+            for (j = 0; j < currentLSA.linkStateSize; j++) {
+                if (currentLSA.linkStates[j].neighborAddress != 0) {
+                    dbg(ROUTING_CHANNEL, "S: %d (N: %d, C: %d)\n", currentLSA.source, currentLSA.linkStates[j].neighborAddress, currentLSA.linkStates[j].cost);
+                }
+            }
+        }
+        dbg(ROUTING_CHANNEL, "]\n");
+
+        return;
+    }
     
     // Dijkstra's Implementation
     // Source Reference - https://www.thecrazyprogrammer.com/2014/03/dijkstra-algorithm-for-finding-shortest-path-of-a-graph.html
     void findShortestPath() {
-        uint16_t nodesize[20];
         uint16_t size = call LinkTable.size();
-        uint16_t maximumNode = 20;
+        uint16_t maximumNode = 21;
         uint16_t i;
         uint16_t j;
         uint16_t nextHop;
@@ -416,35 +422,64 @@ implementation{
         uint16_t minimumDistance;
         uint16_t nextNode;
         uint16_t startNode = TOS_NODE_ID;
-        bool adjacencyMatrix[maximumNode][maximumNode];
+        uint16_t adjacencyMatrix[maximumNode][maximumNode];
         LSA linkstate;
 
         for (i = 0; i < maximumNode; i++) {
             for (j = 0; j < maximumNode; j++) {
-                adjacencyMatrix[i][j] = FALSE;
+                adjacencyMatrix[i][j] = 0;
             }
         }
 
         for (i = 0; i < size; i++) {
-            linkstate = call LinkTable.get(i); //linktable stores LSA trying to insert into LS linkstate
+            linkstate = call LinkTable.get(i); // linktable stores LSA trying to insert into LS linkstate
 
             for (j = 0; j < linkstate.linkStateSize; j++) {
-                adjacencyMatrix[linkstate.source][linkstate.linkStates[j].neighborAddress] = TRUE;
+                adjacencyMatrix[linkstate.source][linkstate.linkStates[j].neighborAddress] = linkstate.linkStates[j].cost;
             }
-            
+        }
+        
+        dbg(ROUTING_CHANNEL, "Generated Adjacency Matrix\n");
+        for (i = 0; i < maximumNode; i++) {
+            printf("[");
+            for (j = 0; j < maximumNode; j++) {
+                printf("%d", adjacencyMatrix[i][j]);
+                
+                if (j != maximumNode - 1) {
+                    printf(", ");
+                }
+            }
+            printf("]\n");
         }
 
         // predicateList[] stores the predecessor of each node
         // count gives the number of nodes seen so far
         // create the cost matrix
-        for (i = 0; i < size; i++) {
+        for (i = 0; i < maximumNode; i++) {
             for (j = 0; j < maximumNode; j++) {
                 if (adjacencyMatrix[i][j] == 0) {
-                    costMatrix[i][j] = 9999;
+                    costMatrix[i][j] = 11111;
                 } else {
                     costMatrix[i][j] = adjacencyMatrix[i][j];
                 }
             }
+        }
+
+        dbg(ROUTING_CHANNEL, "Initial Cost Matrix\n");
+        for (i = 0; i < maximumNode; i++) {
+            printf("[");
+            for (j = 0; j < maximumNode; j++) {
+                if (costMatrix[i][j] != 11111) {
+                    printf("  %d  ", costMatrix[i][j]);
+                } else {
+                    printf("%d", costMatrix[i][j]);
+                }
+
+                if (j != maximumNode - 1) {
+                    printf(", ");
+                }
+            }
+            printf("]\n");
         }
 
         // initialize predicateList[], distanceList[] and visitedlist[]
@@ -459,17 +494,17 @@ implementation{
         nodeCount = 1;
 
         while (nodeCount < maximumNode - 1) {
-            minimumDistance = 9999;
+            minimumDistance = 11111;
 
             for (i = 0; i < maximumNode; i++) {
                 // nextNode gives the node at minimum distance
-                if (distanceList[i] <= minimumDistance && !visitedList[i]) {
+                if (distanceList[i] < minimumDistance && !visitedList[i]) {
                     minimumDistance = distanceList[i];
                     nextNode = i;
                 }
             }
 
-            visitedList[nextNode] = i;
+            visitedList[nextNode] = 1;
 
             for (i = 0; i < maximumNode; i++) {
                 if (!visitedList[i]) {
@@ -483,31 +518,22 @@ implementation{
             nodeCount++;
         }
 
+
+        // TODO Fix the below
         for (i = 0; i < maximumNode; i++) {
-            nextHop = TOS_NODE_ID;
-
-            if (distanceList[i] != 9999) {
-                if (i != startNode) {
-                    j = 1;
-
-                    do {
-                        if (j != startNode) {
-                            nextHop = j;
-                        }
-
-                        j = predicateList[j];
-                    } while (j != startNode);
-                } else {
-                    nextHop = startNode;
-                }
-
-                if (nextHop != 0) {
-                    call RoutingTable.insert(i, nextHop);
-                }
+            if (distanceList[i] != 11111) {
+                printf("Distance of node %d = %d\n", i, distanceList[i]);
+                printf("Path = %d", i);
+                
+                j = i;
+                do {
+                    j = predicateList[j];
+                    printf("<-%d", j);
+                } while (j != startNode);
+                printf("\n");
             }
         }
 
-        dbg(ROUTING_CHANNEL, "Routing Table Size: %d\n", call RoutingTable.size());
         return;
     }
 }
