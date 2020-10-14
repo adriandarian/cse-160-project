@@ -12,10 +12,12 @@ module LinkStateP{
 
     // Modules
     uses interface Timer<TMilli> as LinkStateTimer;
+    uses interface Timer<TMilli> as UpdateTimer;
     uses interface Timer<TMilli> as RoutingTableTimer;
     uses interface SimpleSend as LinkStateSender;
     uses interface Flooding;
     uses interface NeighborDiscovery;
+    uses interface Random;
 
     // Data Structures
     uses interface List<LSA> as LinkTable;
@@ -31,6 +33,7 @@ implementation{
     LSA linkStateAdvertisement;
     pack sendPackage;
     uint8_t payload;
+    uint16_t sequenceNum=0;
 
     /*
     * TODO: 
@@ -73,8 +76,8 @@ implementation{
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
-        call LinkStateTimer.startPeriodic(30000);
-
+        call LinkStateTimer.startOneShot(30000 + (uint16_t)((call Random.rand16()) % 10000));
+        call UpdateTimer.startPeriodic(80000);
         call RoutingTableTimer.startOneShot(180000);
 
         return;
@@ -101,6 +104,7 @@ implementation{
         if (notInLinkTable) {
             makeLSA(&linkStateAdvertisement, package->src, incomingLSA->linkStateSize, incomingLSA->linkStates);
             call LinkTable.pushback(linkStateAdvertisement);
+            
         }
 
         return;
@@ -147,7 +151,28 @@ implementation{
 
         // payload stores the address of linkStateAdvertisement which is type LSA.
         // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
-        makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, 0, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
+        
+        call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
+
+        return;
+    }
+
+    event void UpdateTimer.fired() {
+        uint8_t i;
+        uint32_t *neighbors = call NeighborDiscovery.getNeighbors();
+        uint16_t neighborListSize = call NeighborDiscovery.size();
+        LSATuple LSAT;
+        LSATuple LSATList[neighborListSize];
+        
+        for (i = 0; i < neighborListSize; i++) {
+            makeLSATuple(&LSAT, neighbors[i], 1);
+            LSATList[i] = LSAT;
+        }
+
+        // payload stores the address of linkStateAdvertisement which is type LSA.
+        // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
+        makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
 
@@ -169,6 +194,9 @@ implementation{
             }
         }
         dbg(ROUTING_CHANNEL, "]\n");
+
+
+        findShortestPath();
 
         return;
     }
@@ -389,7 +417,7 @@ implementation{
         uint16_t nextNode;
         uint16_t startNode = TOS_NODE_ID;
         bool adjacencyMatrix[maximumNode][maximumNode];
-        LS linkstate;
+        LSA linkstate;
 
         for (i = 0; i < maximumNode; i++) {
             for (j = 0; j < maximumNode; j++) {
@@ -398,8 +426,12 @@ implementation{
         }
 
         for (i = 0; i < size; i++) {
-            linkstate = call LinkTable.get(i);
-            adjacencyMatrix[linkstate.nextHop][linkstate.destination] = TRUE;
+            linkstate = call LinkTable.get(i); //linktable stores LSA trying to insert into LS linkstate
+
+            for (j = 0; j < linkstate.linkStateSize; j++) {
+                adjacencyMatrix[linkstate.source][linkstate.linkStates[j].neighborAddress] = TRUE;
+            }
+            
         }
 
         // predicateList[] stores the predecessor of each node
@@ -474,5 +506,8 @@ implementation{
                 }
             }
         }
+
+        dbg(ROUTING_CHANNEL, "Routing Table Size: %d\n", call RoutingTable.size());
+        return;
     }
 }

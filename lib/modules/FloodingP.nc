@@ -35,7 +35,7 @@ implementation {
      */
     
     bool searchForPackage(pack *package);
-    bool searchForPackage(pack *package);
+    // bool searchForPackage(pack *package);
     void pushToFloodingList(pack *package);
     void printFloodList();
 
@@ -45,12 +45,12 @@ implementation {
      * #######################################
      */
 
-    command error_t Flooding.send(pack package, uint16_t destination) { 
-        package.src = TOS_NODE_ID;
-        package.protocol = PROTOCOL_PING;
-        package.seq = sequenceNumber++;
-        package.TTL = MAX_TTL;
-        call Sender.send(package, AM_BROADCAST_ADDR);
+    command error_t Flooding.send(pack *package, uint16_t destination) { 
+        package->src = TOS_NODE_ID;
+        // package->protocol = PROTOCOL_PING;
+        package->seq = sequenceNumber;
+        package->TTL = MAX_TTL;
+        call Sender.send(*package, AM_BROADCAST_ADDR);
 
         return SUCCESS;
     }
@@ -97,7 +97,7 @@ implementation {
                 pushToFloodingList(message);
 
                 // Send off package to next node in network
-                makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                makePack(&sendPackage, message->src, message->dest, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }
         } 
@@ -107,13 +107,6 @@ implementation {
 
 
     command void Flooding.LSAHandle(pack* message) {
-        /*
-        * 1) Get flooding package
-        * 2) Access tuple list
-        * 3) For every tuple in the list
-        * 4) set next hop to TOS_NODE_ID
-        * 5) Forward the packet
-        */
         if (message->protocol == PROTOCOL_LINKED_STATE) {
             // Have we seen the node before
             if (message->TTL <= 0 || searchForPackage(message)) {
@@ -127,7 +120,8 @@ implementation {
                 pushToFloodingList(message);
                 
                 // Send off package to next node in network
-                makePack(&sendPackage, message->src, 0, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+
+                makePack(&sendPackage, message->src, message->seq, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
 
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }

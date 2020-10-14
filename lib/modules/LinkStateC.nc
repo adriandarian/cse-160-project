@@ -29,8 +29,14 @@ implementation{
     components new TimerMilliC() as LinkStateTimerC;
     LinkStateP.LinkStateTimer->LinkStateTimerC;
 
+    components new TimerMilliC() as UpdateTimerC;
+    LinkStateP.UpdateTimer->UpdateTimerC;
+
     components new TimerMilliC() as RoutingTableTimerC;
     LinkStateP.RoutingTableTimer->RoutingTableTimerC;
+
+    components RandomC as Random;
+    LinkStateP.Random -> Random;
 
     /*
      * #######################################
