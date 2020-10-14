@@ -24,6 +24,9 @@ implementation{
     components LinkStateC;
     FloodingP.LinkState->LinkStateC;
 
+    components NeighborDiscoveryC;
+    FloodingP.NeighborDiscovery->NeighborDiscoveryC;
+
     /*
      * #######################################
      *              Data Structures
@@ -32,4 +35,10 @@ implementation{
     
     components new ListC(pack, 64) as FloodingListC;
     FloodingP.FloodingList->FloodingListC;
+
+    components new ListC(LS, 64) as LinkStateProtocolListC;
+    FloodingP.LinkStateProtocolList->LinkStateProtocolListC;
+
+    components new HashmapC(uint16_t, 30) as RoutingTableC;
+    FloodingP.RoutingTable->RoutingTableC;
 }

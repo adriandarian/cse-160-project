@@ -12,9 +12,15 @@
 module FloodingP {
     provides interface Flooding;
 
+    // Modules
     uses interface LinkState;
+    uses interface NeighborDiscovery;
     uses interface SimpleSend as Sender;
+
+    // Data Structures
     uses interface List<pack> as FloodingList;
+    uses interface List<LS> as LinkStateProtocolList;
+    uses interface Hashmap<uint16_t> as RoutingTable;
 }
 
 implementation {
@@ -29,6 +35,7 @@ implementation {
      */
     
     bool searchForPackage(pack *package);
+    // bool searchForPackage(pack *package);
     void pushToFloodingList(pack *package);
     void printFloodList();
 
@@ -38,12 +45,19 @@ implementation {
      * #######################################
      */
 
-    command error_t Flooding.send(pack package, uint16_t destination) { 
-        package.src = TOS_NODE_ID;
-        package.protocol = PROTOCOL_PING;
-        package.seq = sequenceNumber++;
-        package.TTL = MAX_TTL;
-        call Sender.send(package, AM_BROADCAST_ADDR);
+    command error_t Flooding.send(pack *package, uint16_t destination) { 
+        package->src = TOS_NODE_ID;
+        // package->protocol = PROTOCOL_PING;
+        package->seq = sequenceNumber;
+        package->TTL = MAX_TTL;
+        call Sender.send(*package, AM_BROADCAST_ADDR);
+
+        return SUCCESS;
+    }
+
+    command error_t Flooding.sequenceIncreaserSender(pack package, uint16_t destination) {
+        package.src = sequenceNumber++;
+        call Sender.send(package, destination);
 
         return SUCCESS;
     }
@@ -83,7 +97,7 @@ implementation {
                 pushToFloodingList(message);
 
                 // Send off package to next node in network
-                makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+                makePack(&sendPackage, message->src, message->dest, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }
         } 
@@ -93,29 +107,11 @@ implementation {
 
 
     command void Flooding.LSAHandle(pack* message) {
-        LSA *payload = message->payload;
-        LSATuple ls;
-        uint8_t i;
-
-        /*
-        * 1) Get flooding package
-        * 2) Access tuple list
-        * 3) For every tuple in the list
-        * 4) set next hop to TOS_NODE_ID
-        * 5) Forward the packet
-        */
-
         if (message->protocol == PROTOCOL_LINKED_STATE) {
             // Have we seen the node before
             if (message->TTL <= 0 || searchForPackage(message)) {
                 // Drop the packet if we've seen it or if it's TTL has run out: i.e. do nothing
-                dbg(FLOODING_CHANNEL, "Package in node %d already inside of cache, proceeding to drop\n", TOS_NODE_ID);
-                
-                for (i = 0; i < payload->linkStateSize; i++) {
-                    ls = payload->linkStates[i];
-                    dbg(FLOODING_CHANNEL, "DROPPED Payload[%d]: [Neighbor: %d, cost: %d] of size: %d\n", i, ls.neighborAddress, ls.cost, payload->linkStateSize);
-                }
-                
+                dbg(FLOODING_CHANNEL, "Package in node %d already inside of cache, proceeding to drop\n", TOS_NODE_ID);            
                 return;
             } else {
                 dbg(FLOODING_CHANNEL, "Flooding at node %d\n", TOS_NODE_ID);
@@ -124,12 +120,12 @@ implementation {
                 pushToFloodingList(message);
                 
                 // Send off package to next node in network
-                makePack(&sendPackage, message->src, 0, message->TTL - 1, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
+
+                makePack(&sendPackage, message->src, message->seq, message->TTL--, message->protocol, message->seq, (uint8_t *)message->payload, sizeof(message->payload));
 
                 call Sender.send(sendPackage, AM_BROADCAST_ADDR);
             }
-        } 
-
+        }
     }
     
     /*
@@ -144,7 +140,7 @@ implementation {
         while (i < FloodingListSize) {
           pack temporaryPackage = call FloodingList.get(i);
 
-          if (temporaryPackage.src == package->src && temporaryPackage.dest == package->dest && temporaryPackage.seq == package->seq) {
+          if (temporaryPackage.src == package->src && temporaryPackage.seq == package->seq) {
             return TRUE;
           }
 

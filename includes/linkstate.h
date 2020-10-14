@@ -18,7 +18,6 @@ typedef nx_struct LSATuple{
 
 typedef nx_struct LSA{
 	nx_uint16_t source;
-	nx_uint16_t sequence;
 	nx_uint16_t linkStateSize;
 	LSATuple linkStates[MAX_LINK_STATE];
 }LSA;
@@ -34,12 +33,10 @@ void makeLSATuple(LSATuple *linkStateAdvertisementTuple, uint16_t neighborAddres
 	linkStateAdvertisementTuple->cost = cost;
 }
 
-void makeLSA(LSA *linkStateAdvertisement, uint16_t source, uint16_t sequence, LSATuple* linkStates, uint16_t linkStateSize) {
+void makeLSA(LSA *linkStateAdvertisement, uint16_t source, uint16_t linkStateSize, LSATuple* linkStates) {
 	linkStateAdvertisement->source = source;
-	linkStateAdvertisement->sequence = sequence;
 	linkStateAdvertisement->linkStateSize = linkStateSize;
 	memcpy(linkStateAdvertisement->linkStates, linkStates, MAX_LINK_STATE);
-	
 }
 
 #endif

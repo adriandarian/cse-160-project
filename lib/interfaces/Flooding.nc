@@ -5,7 +5,8 @@
  */
 
 interface Flooding{
-    command error_t send(pack package, uint16_t destination);
+    command error_t send(pack *package, uint16_t destination);
+    command error_t sequenceIncreaserSender(pack package, uint16_t destination);
     command void pingHandle(pack* message);
     command void LSAHandle(pack* message);
 }

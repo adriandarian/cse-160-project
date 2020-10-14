@@ -29,14 +29,23 @@ implementation{
     components new TimerMilliC() as LinkStateTimerC;
     LinkStateP.LinkStateTimer->LinkStateTimerC;
 
+    components new TimerMilliC() as UpdateTimerC;
+    LinkStateP.UpdateTimer->UpdateTimerC;
+
     components new TimerMilliC() as RoutingTableTimerC;
     LinkStateP.RoutingTableTimer->RoutingTableTimerC;
+
+    components RandomC as Random;
+    LinkStateP.Random -> Random;
 
     /*
      * #######################################
      *              Data Structures
      * #######################################
      */
+
+    components new ListC(LSA, 64) as LinkTableC;
+    LinkStateP.LinkTable->LinkTableC;
 
     components new ListC(LS, 64) as TemporaryListC;
     LinkStateP.TemporaryList->TemporaryListC;
@@ -49,4 +58,7 @@ implementation{
 
     components new ListC(pack, 64) as RecievedList;
     LinkStateP.RecievedList->RecievedList;
+
+    components new HashmapC(uint16_t, 100) as RoutingTableC;
+    LinkStateP.RoutingTable->RoutingTableC;
 }
