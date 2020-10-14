@@ -63,6 +63,7 @@ implementation{
     void printTentativeList();
     void printConfirmedList();
     void printLinkTable();
+    void printNeighbors(uint32_t* neighbors, uint16_t size);
 
     /*
      * #######################################
@@ -77,9 +78,8 @@ implementation{
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
-        call LinkStateTimer.startOneShot(30000 + (uint16_t)((call Random.rand16()) % 10000));
-        call UpdateTimer.startPeriodic(80000);
-        call RoutingTableTimer.startOneShot(180000);
+        call LinkStateTimer.startOneShot(30000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
+
 
         return;
     }
@@ -111,19 +111,33 @@ implementation{
         return;
     }
 
+    command bool LinkState.checkIfInRoutingTable(uint16_t destination) {
+        return call RoutingTable.contains(destination);
+    }
+
+    command uint16_t LinkState.getFromRoutingTable(uint16_t destination) {
+        return call RoutingTable.get(destination);
+    }
+
     command void LinkState.printRoutingTable() {
-        // dbg(ROUTING_CHANNEL, "\n");
-        // dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d Start------------------------\n", TOS_NODE_ID);
-        // printConfirmedList();
-        // dbg(ROUTING_CHANNEL, "------------------------Confirmed List of node %d End--------------------------\n\n", TOS_NODE_ID);
-            
-        // printTentativeList();
+        uint16_t i, j;
 
-        int i = 0;
-
-        for (i = 1; i <= call RoutingTable.size(); i++) {
-            dbg(GENERAL_CHANNEL, "Dest: %d \t firstHop: %d\n", i, call RoutingTable.get(i));
+        dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
+        printf("{\ndestination: nextHop,\n");
+        for (i = 0; i < call RoutingTable.size(); i++) {
+                // printf("Path = %d", i);
+                
+                // j = i;
+                // do {
+                //     j = call RoutingTable.get(j);
+                //     printf("<-%d", j);
+                // } while (j != destination);
+                // printf("\n");
+                if (i != 0) {
+                    printf("\t%d: %d,\n", i, call RoutingTable.get(i));
+                }
         }
+        printf("}\n");
 
         return;
     }
@@ -140,6 +154,8 @@ implementation{
         uint16_t neighborListSize = call NeighborDiscovery.size();
         LSATuple LSAT;
         LSATuple LSATList[neighborListSize];
+
+        // printNeighbors(neighbors, neighborListSize);
         
         for (i = 0; i < neighborListSize; i++) {
             makeLSATuple(&LSAT, neighbors[i], 1);
@@ -155,6 +171,8 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
+        call UpdateTimer.startPeriodic(30000);
+        call RoutingTableTimer.startOneShot(40000);
 
         return;
     }
@@ -165,7 +183,7 @@ implementation{
         uint16_t neighborListSize = call NeighborDiscovery.size();
         LSATuple LSAT;
         LSATuple LSATList[neighborListSize];
-        
+        // printNeighbors(neighbors, neighborListSize);
         for (i = 0; i < neighborListSize; i++) {
             makeLSATuple(&LSAT, neighbors[i], 1);
             LSATList[i] = LSAT;
@@ -173,17 +191,17 @@ implementation{
 
         // payload stores the address of linkStateAdvertisement which is type LSA.
         // if we want to print the contents of LSA we first have to dreference payload wich gives us LSA and then print the contents of LSA
+        makeLSA(&linkStateAdvertisement, TOS_NODE_ID, neighborListSize, LSATList);
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
-        
+        // printLSA(&linkStateAdvertisement);
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
 
         return;
     }
 
     event void RoutingTableTimer.fired() {
-        findShortestPath();
-        
         // printLinkTable();
+        findShortestPath();
         // call LinkState.printRoutingTable();
 
         return;
@@ -194,6 +212,19 @@ implementation{
      *              Methods
      * #######################################
      */
+
+    void printNeighbors(uint32_t* neighbors, uint16_t size) {
+        uint16_t i;
+
+        printf("Neighbors of %d are [", TOS_NODE_ID);
+        for (i = 0; i < size; i++) {
+            printf("%d", neighbors[i]);
+            if (i != size - 1) printf(", ");
+        }
+        printf("]\n");
+
+        return;
+    }
 
     void printTentativeList() {
         uint8_t i;
@@ -410,7 +441,7 @@ implementation{
     // Source Reference - https://www.thecrazyprogrammer.com/2014/03/dijkstra-algorithm-for-finding-shortest-path-of-a-graph.html
     void findShortestPath() {
         uint16_t size = call LinkTable.size();
-        uint16_t maximumNode = 21;
+        uint16_t maximumNode = call LinkTable.size() + 2;
         uint16_t i;
         uint16_t j;
         uint16_t nextHop;
@@ -433,24 +464,42 @@ implementation{
 
         for (i = 0; i < size; i++) {
             linkstate = call LinkTable.get(i); // linktable stores LSA trying to insert into LS linkstate
-
             for (j = 0; j < linkstate.linkStateSize; j++) {
+                
                 adjacencyMatrix[linkstate.source][linkstate.linkStates[j].neighborAddress] = linkstate.linkStates[j].cost;
             }
         }
         
-        dbg(ROUTING_CHANNEL, "Generated Adjacency Matrix\n");
-        for (i = 0; i < maximumNode; i++) {
-            printf("[");
-            for (j = 0; j < maximumNode; j++) {
-                printf("%d", adjacencyMatrix[i][j]);
+        // dbg(ROUTING_CHANNEL, "Generated Adjacency Matrix\n");
+        // printf("   [");
+        // for (i = 0; i < maximumNode; i++) {
+        //     printf("%d", i);
+
+        //     if (i != maximumNode - 1) {
+        //         printf(", ");
+        //     }
+        // }
+        // printf("]\n");
+
+        // for (i = 0; i < maximumNode; i++) {
+        //     if (i >= 10) {
+        //         printf("%d [", i);
+        //     } else {
+        //         printf("%d  [", i);
+        //     }
+        //     for (j = 0; j < maximumNode; j++) {
+        //         if (adjacencyMatrix[i][j] != 1) {
+        //             printf(" ");
+        //         } else {
+        //             printf("%d", adjacencyMatrix[i][j]);
+        //         }
                 
-                if (j != maximumNode - 1) {
-                    printf(", ");
-                }
-            }
-            printf("]\n");
-        }
+        //         if (j != maximumNode - 1) {
+        //             printf(", ");
+        //         }
+        //     }
+        //     printf("]\n");
+        // }
 
         // predicateList[] stores the predecessor of each node
         // count gives the number of nodes seen so far
@@ -465,22 +514,22 @@ implementation{
             }
         }
 
-        dbg(ROUTING_CHANNEL, "Initial Cost Matrix\n");
-        for (i = 0; i < maximumNode; i++) {
-            printf("[");
-            for (j = 0; j < maximumNode; j++) {
-                if (costMatrix[i][j] != 11111) {
-                    printf("  %d  ", costMatrix[i][j]);
-                } else {
-                    printf("%d", costMatrix[i][j]);
-                }
+        // dbg(ROUTING_CHANNEL, "Initial Cost Matrix\n");
+        // for (i = 0; i < maximumNode; i++) {
+        //     printf("[");
+        //     for (j = 0; j < maximumNode; j++) {
+        //         if (costMatrix[i][j] != 11111) {
+        //             printf("  %d  ", costMatrix[i][j]);
+        //         } else {
+        //             printf("%d", costMatrix[i][j]);
+        //         }
 
-                if (j != maximumNode - 1) {
-                    printf(", ");
-                }
-            }
-            printf("]\n");
-        }
+        //         if (j != maximumNode - 1) {
+        //             printf(", ");
+        //         }
+        //     }
+        //     printf("]\n");
+        // }
 
         // initialize predicateList[], distanceList[] and visitedlist[]
         for (i = 0; i < maximumNode; i++) {
@@ -520,17 +569,19 @@ implementation{
 
 
         // TODO Fix the below
+        // dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
         for (i = 0; i < maximumNode; i++) {
             if (distanceList[i] != 11111) {
-                printf("Distance of node %d = %d\n", i, distanceList[i]);
-                printf("Path = %d", i);
+                // printf("Distance of node %d = %d\n", i, distanceList[i]);
+                // printf("Path = %d", i);
                 
-                j = i;
-                do {
-                    j = predicateList[j];
-                    printf("<-%d", j);
-                } while (j != startNode);
-                printf("\n");
+                // j = i;
+                // do {
+                //     j = predicateList[j];
+                //     printf("<-%d", j);
+                // } while (j != startNode);
+                // printf("\n");
+                call RoutingTable.insert(i, predicateList[i]);
             }
         }
 

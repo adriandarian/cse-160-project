@@ -35,7 +35,7 @@ implementation {
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
 
         // UNCOMMENT THIS FOR DYNMAIC NEIGHBOR TABLE
-        call updateNeighborTable.startPeriodic(30000); //update evey 30 seconds 
+        call updateNeighborTable.startPeriodic(20000); //update evey 30 seconds 
     }
 
     command void NeighborDiscovery.pingHandle(pack * package) {

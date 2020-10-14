@@ -48,14 +48,4 @@ implementation {
     // Link State
     components LinkStateC;
     Node.LinkState->LinkStateC;
-
-    /*
-     * #######################################
-     *              Data Structures
-     * #######################################
-     */
-
-    components new HashmapC(uint16_t, 100) as RoutingTableC;
-    Node.RoutingTable->RoutingTableC;
-    // LinkStateC.RoutingTableC->RoutingTableC;
 }

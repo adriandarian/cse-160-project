@@ -8,7 +8,7 @@ def main():
     s.runTime(1)
 
     # Load the the layout of the network.
-    s.loadTopo("long_line.topo")
+    s.loadTopo("circle.topo")
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt")
@@ -27,10 +27,6 @@ def main():
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(20)
 
-    # Check Routing table
-    s.runTime(20)
-    s.routeDMP(0)
-
     s.ping(1, 5, "1->5")
     s.runTime(20)
     s.ping(1, 5, "1->5")
@@ -41,10 +37,13 @@ def main():
     s.runTime(20)
 
     # Print all neighbors in Topology
-    # for i in range(s.numMote + 1):
-    #     s.runTime(20)
-    #     s.neighborDMP(i)
+    for i in range(s.numMote + 1):
+        s.runTime(20)
+        s.neighborDMP(i)
     
+    # Check Routing table
+    s.runTime(20)
+    s.routeDMP(4)
     
 
     s.runTime(20)
