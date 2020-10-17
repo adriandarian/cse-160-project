@@ -568,12 +568,12 @@ implementation{
         }
 
         // TODO Fix the below
-        // dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
+        dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
         for (i = 0; i < maximumNode; i++) {
             nextHop = TOS_NODE_ID;
             if (distanceList[i] != 11111) {
-                // printf("Distance to node %d has cost of %d\n", i, distanceList[i]);
-                // printf("Path = %d", i);
+                printf("Distance to node %d has cost of %d\n", i, distanceList[i]);
+                printf("Path = %d", i);
                 if (i != startNode) {
                     j = i;
                     do {
@@ -582,17 +582,17 @@ implementation{
                         }
 
                         j = predicateList[j];
-                        // printf("<-%d", j);
+                        printf("<-%d", j);
                     } while (j != startNode);
-                    // printf("\n");
+                    printf("\n");
                 } else {
                     nextHop = startNode;
-                    // j = i;
-                    // do {
-                    //     j = predicateList[j];
-                    //     printf("<-%d", j);
-                    // } while (j != startNode);
-                    // printf("\n");
+                    j = i;
+                    do {
+                        j = predicateList[j];
+                        printf("<-%d", j);
+                    } while (j != startNode);
+                    printf("\n");
                 }
 
                 // if (nextHop != 0) {
