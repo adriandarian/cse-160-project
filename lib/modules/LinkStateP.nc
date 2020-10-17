@@ -25,6 +25,7 @@ module LinkStateP{
     uses interface List<LS> as TemporaryList;
     uses interface List<LS> as TentativeList;
     uses interface List<LS> as ConfirmedList;
+    uses interface Hashmap<uint16_t> as DistanceList;
     uses interface Hashmap<uint16_t> as RoutingTable;
 }
 
@@ -78,7 +79,7 @@ implementation{
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
-        call LinkStateTimer.startOneShot(30000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
+        call LinkStateTimer.startOneShot(20000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
 
         return;
     }
@@ -122,7 +123,7 @@ implementation{
         uint16_t i, j;
 
         dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
-        printf("{\ndestination: nextHop,\n");
+        printf("{\ndestination: nextHop,  cost\n");
         for (i = 0; i < call RoutingTable.size() + 1; i++) {
                 // printf("Path = %d", i);
                 
@@ -133,7 +134,7 @@ implementation{
                 // } while (j != destination);
                 // printf("\n");
                 if (i != 0) {
-                    printf("\t%d: %d,\n", i, call RoutingTable.get(i));
+                    printf("\t%d: \t%d, \t%d\n", i, call RoutingTable.get(i), call DistanceList.get(i));
                 }
         }
         printf("}\n");
@@ -170,8 +171,8 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-        call UpdateTimer.startPeriodic(30000);
-        call RoutingTableTimer.startOneShot(40000);
+        call UpdateTimer.startPeriodic(20000);
+        call RoutingTableTimer.startOneShot(20000);
 
         return;
     }
@@ -596,6 +597,7 @@ implementation{
 
                 // if (nextHop != 0) {
                     call RoutingTable.insert(i, nextHop);
+                    call DistanceList.insert(i, distanceList[i]);
                 // }
             }
         }

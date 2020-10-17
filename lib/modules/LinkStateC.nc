@@ -56,8 +56,11 @@ implementation{
     components new ListC(LS, 64) as ConfirmedListC;
     LinkStateP.ConfirmedList->ConfirmedListC;
 
-    components new ListC(pack, 64) as RecievedList;
-    LinkStateP.RecievedList->RecievedList;
+    components new ListC(pack, 64) as RecievedListC;
+    LinkStateP.RecievedList->RecievedListC;
+
+    components new HashmapC(uint16_t, 100) as DistanceListC;
+    LinkStateP.DistanceList->DistanceListC;
 
     components new HashmapC(uint16_t, 100) as RoutingTableC;
     LinkStateP.RoutingTable->RoutingTableC;
