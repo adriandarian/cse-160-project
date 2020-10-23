@@ -172,7 +172,7 @@ implementation{
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
         call UpdateTimer.startPeriodic(20000);
-        call RoutingTableTimer.startOneShot(20000);
+        
 
         return;
     }
@@ -195,7 +195,7 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         // printLSA(&linkStateAdvertisement);
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-
+        call RoutingTableTimer.startOneShot(10000);
         return;
     }
 
