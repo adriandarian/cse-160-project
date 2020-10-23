@@ -53,9 +53,9 @@ implementation {
         }
 
         // Check if neighbors replied by checking protocol:
-        else if (package->protocol = PROTOCOL_NEIGHBOR_PING_REPLY) {
+        else if (package->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
             dbg(NEIGHBOR_CHANNEL, "Neighbor discovered %d\n", package->src);
-            call Hashmap.insert(package->src, 1);
+            call Hashmap.insert(package->src, 2);
         }
     }
 
@@ -105,16 +105,16 @@ implementation {
         dbg(NEIGHBOR_CHANNEL, "Updating neighbor table\n");
         makePack(&package, TOS_NODE_ID, 0, 1, PROTOCOL_NEIGHBOR_PING, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
         // wait some time:
-        call updateTimer.startOneShot((call Random.rand16() % 500) + 300);
+        // call updateTimer.startOneShot((call Random.rand16() % 500) + 300);
 
         for (i = 0; i < tableSize; i++) {
             call Hashmap.insert(keyPtr[i], call Hashmap.get(keyPtr[i]) - 1);
         }
 
         for (i = 0; i < tableSize; i++) {
-            if (keyPtr[i] < 0) {
+            if (call Hashmap.get(keyPtr[i]) <= 0) {
                 call Hashmap.remove(keyPtr[i]);
-                dbg(NEIGHBOR_CHANNEL, "Removed %d from neighbor table\n", keyPtr[i]);
+                dbg(NEIGHBOR_CHANNEL, "Removed %d from neighbor table\n", i);
             }
         }
 
