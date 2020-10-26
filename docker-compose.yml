@@ -4,9 +4,9 @@ networks:
   cse_160_network:
 
 services:
-    project-2:
+    project-3:
         image: ucmercedandeslab/tinyos_debian
-        container_name: project-2
+        container_name: project-3
         stdin_open: true # docker run -i
         tty: true # docker run -t
         command: "bash"
@@ -14,7 +14,7 @@ services:
         networks: 
           cse_160_network:
             aliases:
-              - "project 2"
+              - "project 3"
         volumes:
             - .:/home
         logging:

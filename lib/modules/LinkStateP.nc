@@ -241,7 +241,7 @@ implementation{
                         
                         if (currentLSA.linkStates[j].neighborAddress != neighbors[k]) {
                             currentLSA.linkStates[j].cost = 10000;
-                            printf("pain.\n");
+                            // printf("pain.\n");
                         }
                         
                         
