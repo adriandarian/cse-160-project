@@ -22,6 +22,7 @@ module LinkStateP{
     // Data Structures
     uses interface List<LSA> as LinkTable;
     uses interface List<pack> as RecievedList;
+    uses interface List<uint32_t> as NeighborList;
     uses interface List<LS> as TemporaryList;
     uses interface List<LS> as TentativeList;
     uses interface List<LS> as ConfirmedList;
@@ -35,6 +36,7 @@ implementation{
     pack sendPackage;
     uint8_t payload;
     uint16_t sequenceNum = 0;
+    bool neighborsHaveChanged = FALSE;
 
     /*
     * TODO: 
@@ -155,6 +157,10 @@ implementation{
         LSATuple LSAT;
         LSATuple LSATList[neighborListSize];
 
+        for (i = 0; i < neighborListSize; i++) {
+            call NeighborList.pushback(neighbors[i]);
+        }
+
         // printNeighbors(neighbors, neighborListSize);
         
         for (i = 0; i < neighborListSize; i++) {
@@ -172,7 +178,6 @@ implementation{
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
         call UpdateTimer.startPeriodic(20000);
-        
 
         return;
     }
@@ -200,8 +205,57 @@ implementation{
     }
 
     event void RoutingTableTimer.fired() {
+        uint16_t i, j, k;
+        uint16_t idx;
+        LSA currentLSA;
+        uint32_t *neighbors = call NeighborDiscovery.getNeighbors();
+        uint16_t neighborListSize = call NeighborDiscovery.size();
+        uint16_t linkTableSize = call LinkTable.size();
+
+        // if (call NeighborList.size() != neighborListSize) {
+        //     dbg(ROUTING_CHANNEL, "The size of the neighbors are different\n");
+        // }
+        // call NeighborDiscovery.print();
+        for (i = 0; i < neighborListSize; i++) {
+            dbg(ROUTING_CHANNEL, "node: %d, NeighborList: [%d], neighbors: [%d]\n", TOS_NODE_ID, call NeighborList.get(i), neighbors[i]);
+            // if (call NeighborList.get(i) != neighbors[i]) {
+            //     neighborsHaveChanged = TRUE;
+            //     dbg(ROUTING_CHANNEL, "The neighbors have changed\n");
+            //     break;
+            // }
+        }
+
+        // if (neighborsHaveChanged) {
+        //     dbg(ROUTING_CHANNEL, "The neighbors have changed\n");
+        //     neighborsHaveChanged = FALSE;
+        // }        
+
         // printLinkTable();
-        findShortestPath();
+        
+        for (i = 0; i < linkTableSize; i++) {
+            currentLSA = call LinkTable.get(i);
+
+            if (currentLSA.source == TOS_NODE_ID) {
+                for (j = 0; j < currentLSA.linkStateSize; j++) {
+                    for (k = 0; k < call NeighborDiscovery.size(); k++) {
+                        
+                        if (currentLSA.linkStates[j].neighborAddress != neighbors[k]) {
+                            currentLSA.linkStates[j].cost = 10000;
+                            printf("pain.\n");
+                        }
+                        
+                        
+                    }
+
+                    call LinkTable.pushback(currentLSA);
+                    call LinkTable.popfront();
+                }
+            }
+        }
+        
+
+        // printLinkTable();
+        findShortestPath();        
         // call LinkState.printRoutingTable();
 
         return;

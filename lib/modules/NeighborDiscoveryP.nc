@@ -60,16 +60,38 @@ implementation {
     }
 
     command error_t NeighborDiscovery.print() {
+        uint16_t j;
+        uint16_t tableSizeP;
+        uint32_t *keyPtrP;
         uint16_t i;
-        uint16_t tableSize;
-        uint32_t *keyPtr;
+        uint32_t *keyPtr = call Hashmap.getKeys();
+        uint16_t tableSize = call Hashmap.size();
+        pack package;
+        uint16_t payload = 84;
 
+        dbg(NEIGHBOR_CHANNEL, "Updating neighbor table\n");
+        makePack(&package, TOS_NODE_ID, 0, 1, PROTOCOL_NEIGHBOR_PING, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
+        // wait some time:
+        // call updateTimer.startOneShot((call Random.rand16() % 500) + 300);
+
+        for (i = 0; i < tableSize; i++) {
+            call Hashmap.insert(keyPtr[i], call Hashmap.get(keyPtr[i]) - 1);
+        }
+
+        for (i = 0; i < tableSize; i++) {
+            if (call Hashmap.get(keyPtr[i]) <= 0) {
+                call Hashmap.remove(keyPtr[i]);
+                dbg(NEIGHBOR_CHANNEL, "Removed %d from neighbor table\n", keyPtr[i]);
+            }
+        }
+
+        call SimpleSend.send(package, AM_BROADCAST_ADDR);
         if (!call Hashmap.isEmpty()) {
-            tableSize = call Hashmap.size();
-            keyPtr = call Hashmap.getKeys();
+            tableSizeP = call Hashmap.size();
+            keyPtrP = call Hashmap.getKeys();
 
-            for (i = 0; i < tableSize; i++) {
-                dbg(GENERAL_CHANNEL, "Neighbors: %d\n", keyPtr[i]); 
+            for (j = 0; j < tableSizeP; j++) {
+                dbg(GENERAL_CHANNEL, "Neighbors: %d\n", keyPtrP[j]); 
             }
 
             dbg(NEIGHBOR_CHANNEL, "\n");
@@ -85,6 +107,7 @@ implementation {
     }
 
     command uint32_t* NeighborDiscovery.getNeighbors() {
+        
         return call Hashmap.getKeys();
     }
 
@@ -114,7 +137,7 @@ implementation {
         for (i = 0; i < tableSize; i++) {
             if (call Hashmap.get(keyPtr[i]) <= 0) {
                 call Hashmap.remove(keyPtr[i]);
-                dbg(NEIGHBOR_CHANNEL, "Removed %d from neighbor table\n", i);
+                dbg(NEIGHBOR_CHANNEL, "Removed %d from neighbor table\n", keyPtr[i]);
             }
         }
 

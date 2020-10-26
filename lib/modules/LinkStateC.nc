@@ -50,6 +50,9 @@ implementation{
     components new ListC(LS, 64) as TemporaryListC;
     LinkStateP.TemporaryList->TemporaryListC;
 
+    components new ListC(uint32_t, 64) as NeighborListC;
+    LinkStateP.NeighborList->NeighborListC;
+
     components new ListC(LS, 64) as TentativeListC;
     LinkStateP.TentativeList->TentativeListC;
 
