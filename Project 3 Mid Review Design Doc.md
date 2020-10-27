@@ -3,6 +3,7 @@
 - [ ] Make TCP struct
 - [ ] 3-Way Handshake
 - [ ] Stop and Wait
+- [ ] Closing Connection
 - [ ] Implement sockets...
 - [ ] Test Server and test Client commands
 - [ ] Test Server Handler
@@ -21,7 +22,7 @@
 - Flags [tcpFlag]
 - Advertised Window [UINT16_T]
 - Checksum [UINT16_T]
-- Data [UINT16_T*]
+- payload [UINT16_T*]
 
 ***TCP FLAG***
 
@@ -35,9 +36,12 @@
 ## IMPLEMENT 3-WAY HANDSHAKE
 
 ***CLIENT*** Sends SYN
+
 ***SERVER*** Sends SYN_ACK
+
 ***CLIENT*** Sends ACK
-*PseudoCode*
+
+### 3-WAY HANDSHAKE PseudoCode
 
 ```python
   avaliablePorts # List of ports that are not currently used
@@ -90,3 +94,53 @@
 
     print("Server: Connection Established")
 ```
+
+## IMPLEMENT STOP-AND-WAIT
+
+***SENDER*** Sends Packet, starts Timer
+
+***RECIVER*** If Packet is recieved, send ACK
+
+***SENDER*** If ACK is recieved stop timer and send next Packet start new timer OR if Timer times out resend Packet
+
+***RECIVER*** If duplicate packet is recieved due to a dropped ACK, resend ACK but drop the duplicate packet
+
+### STOP-AND-WAIT PseudoCode
+
+```python
+  lastPacketRecieved = 0
+  # sequence and ack numbers from handshake
+  sequenceNumber = RecievedSyn.SequenceNum
+  
+  Sender(RecievedSyn, data):
+      if (ReceivedAck):
+        sequenceNumber = sequenceNumber + 1
+        stopTimer()
+        return
+
+      tcpPacket = CreateTCPPacket(RecievedSyn.sourcePort, RecievedSyn.destPort, sequenceNumber, RecievedSyn.acknumber, RecievedSyn.hrdln, DATA, 1, RecievedSyn.checksum, payload = data)
+      sendPacket(tcpPacket)
+      startTimer(timeout)
+
+      if (timer.finish):
+        sendPacket(tcpPacket)
+        startTimer(timeout)
+
+
+  Receiver.Handler():
+    if (recivedPacket.sequenceNumber == lastPacketRecieved):
+      dropPacket
+    else:
+      lastPacketRecieved = recievedPacket.sequenceNumber
+
+    tcpPacket = CreateTCPPacket(sourcePort, destPort, recievedPacket.sequenceNumber, recievedPacket.sequenceNumber + 1, hdrlen, ACK, 1, checksum, NULL)
+
+```
+
+## IMPLEMENT ClOSE-CONNECTION
+
+***CLIENT*** Sends FIN sequnceNum = x
+
+***SERVER*** Sends FIN sequnceNum = y, ACKnum = x + 1
+
+***CLIENT*** If all FINs are succesful, 
