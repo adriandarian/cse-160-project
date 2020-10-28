@@ -23,9 +23,6 @@ module LinkStateP{
     uses interface List<LSA> as LinkTable;
     uses interface List<pack> as RecievedList;
     uses interface List<uint32_t> as NeighborList;
-    uses interface List<LS> as TemporaryList;
-    uses interface List<LS> as TentativeList;
-    uses interface List<LS> as ConfirmedList;
     uses interface Hashmap<uint16_t> as DistanceList;
     uses interface Hashmap<uint16_t> as RoutingTable;
 }
@@ -56,15 +53,9 @@ implementation{
      * #######################################
      */
     
-    LS getLowestCost();
-    void updateConfirmedList(LS incomingLinkState);
-    void updateTentativeList(LS incomingLinkState);
-    void removeFromTentativeList(LS linkstate);
     bool searchForPackage(pack package);
     void printLSA(LSA* LSAdvertisement);
     void findShortestPath();
-    void printTentativeList();
-    void printConfirmedList();
     void printLinkTable();
     void printNeighbors(uint32_t* neighbors, uint16_t size);
 
@@ -75,10 +66,6 @@ implementation{
      */
 
     command void LinkState.start() {
-        // Create initial LinkState i.e. (D, 0, D)
-        makeLS(&linkState, TOS_NODE_ID, 0, TOS_NODE_ID);
-        call ConfirmedList.pushback(linkState);
-
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
         call LinkStateTimer.startOneShot(20000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
@@ -217,7 +204,7 @@ implementation{
         // }
         // call NeighborDiscovery.print();
         for (i = 0; i < neighborListSize; i++) {
-            dbg(ROUTING_CHANNEL, "node: %d, NeighborList: [%d], neighbors: [%d]\n", TOS_NODE_ID, call NeighborList.get(i), neighbors[i]);
+            // dbg(ROUTING_CHANNEL, "node: %d, NeighborList: [%d], neighbors: [%d]\n", TOS_NODE_ID, call NeighborList.get(i), neighbors[i]);
             // if (call NeighborList.get(i) != neighbors[i]) {
             //     neighborsHaveChanged = TRUE;
             //     dbg(ROUTING_CHANNEL, "The neighbors have changed\n");
@@ -276,170 +263,6 @@ implementation{
             if (i != size - 1) printf(", ");
         }
         printf("]\n");
-
-        return;
-    }
-
-    void printTentativeList() {
-        uint8_t i;
-        LS temp;
-        uint16_t size;
-        
-        if (!call TentativeList.isEmpty()) {
-            size = call TentativeList.size();
-
-            for (i = 0; i < size; i++) {
-                temp = call TentativeList.get(i);
-                
-                if (temp.destination > 0) {
-                    dbg(ROUTING_CHANNEL, "Tenative List State[%d] at src %d: [destination: %d, cost: %d, nextHop: %d], size: %d\n", i, TOS_NODE_ID, temp.destination, temp.cost, temp.nextHop, size);
-                }
-            }
-        }
-
-        return;
-    }
-
-    void printConfirmedList() {
-        uint8_t i;
-        LS temp;
-        uint16_t size;
-        
-        if (!call ConfirmedList.isEmpty()) {
-            size = call ConfirmedList.size();
-
-            for (i = 0; i < size; i++) {
-                temp = call ConfirmedList.get(i);
-                dbg(ROUTING_CHANNEL, "Confirmed List State[%d]: [destination: %d, cost: %d, nextHop: %d], size: %d\n", i, temp.destination, temp.cost, temp.nextHop, size);
-            }
-        }
-
-        return;
-    }
-
-    // Add new link state to the confirmed list
-    void updateConfirmedList(LS incomingLinkState) {
-        uint16_t size = call ConfirmedList.size();
-        uint8_t i;
-        LS currentLinkState;
-        uint8_t shouldPush = 1;
-
-        // check if the tentative list if empty
-        if (incomingLinkState.destination < 30) {
-            for (i = 0; i < size; i++) {
-                // generate a temporary link state
-                currentLinkState = call ConfirmedList.get(i);
-
-                /*
-                * if the link state's destination is equal to the link state we want to update, 
-                * then update the cost and nextHop values 
-                */
-                if (currentLinkState.destination == incomingLinkState.destination) {
-                    if (incomingLinkState.cost < currentLinkState.cost) {
-                        currentLinkState.cost = incomingLinkState.cost;
-                        currentLinkState.nextHop = incomingLinkState.nextHop;
-                    }
-
-                    shouldPush = 0;
-                }
-            }
-
-            if (shouldPush == 1) {
-                call ConfirmedList.pushback(incomingLinkState);
-            }
-        }
-
-        return;
-    }
-
-    // update our tentative list of link states
-    void updateTentativeList(LS incomingLinkState) {
-        uint16_t size = call TentativeList.size();
-        uint8_t i;
-        LS currentLinkState;
-        uint8_t shouldPush = 1;
-
-        // check if the tentative list if empty
-        if (call TentativeList.isEmpty()) {
-            // push new link state to end of tentative list
-            call TentativeList.pushback(incomingLinkState);
-        } else if (incomingLinkState.destination < 30) {
-            for (i = 0; i < size; i++) {
-                // generate a temporary link state
-                currentLinkState = call TentativeList.get(i);
-
-                /*
-                * if the link state's destination is equal to the link state we want to update, 
-                * then update the cost and nextHop values 
-                */
-                if (currentLinkState.destination == incomingLinkState.destination) {
-                    if (incomingLinkState.cost < currentLinkState.cost) {
-                        currentLinkState.cost = incomingLinkState.cost;
-                        currentLinkState.nextHop = incomingLinkState.nextHop;
-                    }
-
-                    shouldPush = 0;
-                }
-            }
-
-            if (shouldPush == 1) {
-                call TentativeList.pushback(incomingLinkState);
-            }
-        }
-
-        return;
-    }
-
-    LS getLowestCost() {
-        LS lowestCostTuple, temporaryLinkState;
-        uint8_t i = 0;
-        uint16_t size;
-
-        if (!call TentativeList.isEmpty()) {
-            size = call TentativeList.size();
-
-            do {
-                temporaryLinkState = call TentativeList.get(i);
-
-                if (i == 0) {
-                    lowestCostTuple = temporaryLinkState;
-                } else if (lowestCostTuple.cost > temporaryLinkState.cost) {
-                    lowestCostTuple = temporaryLinkState;
-                }
-
-                i++;
-            } while (i < size);
-        } else {
-            lowestCostTuple = call ConfirmedList.get(call ConfirmedList.size() - 1);
-        }
-
-        return lowestCostTuple;
-    }
-
-    // remove a link state from the tentative list
-    void removeFromTentativeList(LS linkstate) {
-        uint8_t i;
-
-        // check if the tentative list and temporary list are empty
-        if (!call TentativeList.isEmpty()) {
-            for (i = 0; i < call TentativeList.size(); i++) {
-                LS temp = call TentativeList.get(i);
-
-                // only remove the 
-                if (temp.destination != linkstate.destination) {
-                    call TemporaryList.pushback(temp);
-                }
-
-                call TentativeList.popfront();
-            }
-        }
-
-        if (!call TemporaryList.isEmpty()) {
-            for (i = 0; i < call TemporaryList.size(); i++) {
-                call TentativeList.pushback(call TemporaryList.get(i));
-                call TemporaryList.popfront();
-            }
-        }
 
         return;
     }

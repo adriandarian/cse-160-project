@@ -47,17 +47,8 @@ implementation{
     components new ListC(LSA, 64) as LinkTableC;
     LinkStateP.LinkTable->LinkTableC;
 
-    components new ListC(LS, 64) as TemporaryListC;
-    LinkStateP.TemporaryList->TemporaryListC;
-
     components new ListC(uint32_t, 64) as NeighborListC;
     LinkStateP.NeighborList->NeighborListC;
-
-    components new ListC(LS, 64) as TentativeListC;
-    LinkStateP.TentativeList->TentativeListC;
-
-    components new ListC(LS, 64) as ConfirmedListC;
-    LinkStateP.ConfirmedList->ConfirmedListC;
 
     components new ListC(pack, 64) as RecievedListC;
     LinkStateP.RecievedList->RecievedListC;
