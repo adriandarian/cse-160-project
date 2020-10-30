@@ -24,10 +24,10 @@ def main():
     # After sending a ping, simulate a little to prevent collision.
 
     s.runTime(300);
-    s.testServer(1);
+    s.testServer(1); # we need address and port here
     s.runTime(60);
 
-    s.testClient(4);
+    s.testClient(4); # we need address, source port, destination port, and transfer
     s.runTime(1);
     s.runTime(1000);
 

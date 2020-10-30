@@ -143,4 +143,17 @@
 
 ***SERVER*** Sends FIN sequnceNum = y, ACKnum = x + 1
 
-***CLIENT*** If all FINs are succesful, 
+***CLIENT*** If all FINs are succesful,
+
+### Notes
+
+- No bidirectional
+- will need server, client, and clientClose python commands for mid review
+- after 3 way handshake the client will save the connection
+- can have as many connections as we want, but cannot have 2 or more on the same source port
+- client decides the source port
+- we need to split code based on state handling and make a more defined structure
+- state machine is a glorified switch statement
+- follow socket based methodology, where we use the socket interface and the socket commands
+- tcp module only knows if you are receiving or sending and handles accordingly
+- build a reset flow to showcase logical errors known while running
