@@ -79,7 +79,7 @@ implementation{
 
         // Flood Link-State-Advertisment:
         // Start oneshot timer:
-        call LinkStateTimer.startOneShot(20000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
+        call LinkStateTimer.startOneShot(60000 + (uint16_t)((call Random.rand16()) % 10 * 10000));
 
         return;
     }
@@ -171,8 +171,8 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-        call UpdateTimer.startPeriodic(20000);
-        call RoutingTableTimer.startOneShot(20000);
+        call UpdateTimer.startPeriodic(80000);
+        call RoutingTableTimer.startOneShot(180000);
 
         return;
     }
