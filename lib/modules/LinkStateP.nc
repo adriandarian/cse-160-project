@@ -88,7 +88,7 @@ implementation{
     command void LinkState.LSHandler(pack *package) {
         uint16_t i;
         LSA *incomingLSA = (uint8_t *)package->payload;
-        bool notInLinkTable = TRUE;
+        uint16_t notInLinkTable = 1;
         LSA temporaryLSA;
         
 
@@ -97,7 +97,7 @@ implementation{
             temporaryLSA = call LinkTable.get(i);
 
             if (temporaryLSA.source == package->src) {
-                notInLinkTable = FALSE;
+                notInLinkTable = 0;
                 break;
             }
         }
@@ -121,10 +121,15 @@ implementation{
 
     command void LinkState.printRoutingTable() {
         uint16_t i, j;
-
+        // uint32_t *keyPtr = call RoutingTable.getKeys();
+        // if(call RoutingTable.isEmpty() == FALSE){
+        //     for(i = 0; i < call RoutingTable.size(); i++){
+        //         call RoutingTable.remove(i);
+        //     }
+        // }
         dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
         printf("{\ndestination: nextHop,  cost\n");
-        for (i = 0; i < call RoutingTable.size() + 1; i++) {
+        for (i = 0; i < call RoutingTable.size()+1 ; i++) {
                 // printf("Path = %d", i);
                 
                 // j = i;
@@ -171,7 +176,7 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-        call UpdateTimer.startPeriodic(20000);
+        call UpdateTimer.startPeriodic(100000);
         
 
         return;
@@ -185,6 +190,7 @@ implementation{
         LSATuple LSATList[neighborListSize];
         // printNeighbors(neighbors, neighborListSize);
         for (i = 0; i < neighborListSize; i++) {
+            // printf("%d UPDATE NEGHBORS: %d\n", TOS_NODE_ID,neighbors[i]);
             makeLSATuple(&LSAT, neighbors[i], 1);
             LSATList[i] = LSAT;
         }
@@ -195,14 +201,24 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         // printLSA(&linkStateAdvertisement);
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-        call RoutingTableTimer.startOneShot(10000);
+        call RoutingTableTimer.startOneShot(500);
         return;
     }
 
     event void RoutingTableTimer.fired() {
+        uint16_t i;
+        uint32_t *keyPtr = call RoutingTable.getKeys();
+        
         // printLinkTable();
+        if(call RoutingTable.isEmpty() == FALSE){
+            for(i = 0; i < call RoutingTable.size(); i++){
+                
+                call RoutingTable.remove(i);
+            }
+        }
         findShortestPath();
         // call LinkState.printRoutingTable();
+        call LinkTable.empty();
 
         return;
     }
@@ -421,7 +437,6 @@ implementation{
     void printLinkTable() {
         uint16_t i, j;
         LSA currentLSA;
-
         dbg(ROUTING_CHANNEL, "Src: %d with size %d [\n", TOS_NODE_ID, call LinkTable.size());
         for (i = 0; i < call LinkTable.size(); i++) {
             currentLSA = call LinkTable.get(i);
@@ -601,7 +616,7 @@ implementation{
                 // }
             }
         }
-
+        
         return;
     }
 }

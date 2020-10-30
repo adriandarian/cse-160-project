@@ -35,7 +35,7 @@ implementation {
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
 
         // UNCOMMENT THIS FOR DYNMAIC NEIGHBOR TABLE
-        call updateNeighborTable.startPeriodic(20000); //update evey 30 seconds 
+        call updateNeighborTable.startPeriodic(2000); //update evey 10 seconds 
     }
 
     command void NeighborDiscovery.pingHandle(pack * package) {
@@ -84,9 +84,10 @@ implementation {
         return call Hashmap.size();
     }
 
-    command uint32_t* NeighborDiscovery.getNeighbors() {
-        return call Hashmap.getKeys();
-    }
+
+    // command error_t update(){
+        
+    // }
 
     /*
      * #######################################
@@ -103,11 +104,12 @@ implementation {
         uint16_t payload = 84;
 
         dbg(NEIGHBOR_CHANNEL, "Updating neighbor table\n");
-        makePack(&package, TOS_NODE_ID, 0, 1, PROTOCOL_NEIGHBOR_PING, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
+        
         // wait some time:
-        // call updateTimer.startOneShot((call Random.rand16() % 500) + 300);
+        call updateTimer.startOneShot((call Random.rand16() % 500) + 300);
 
         for (i = 0; i < tableSize; i++) {
+            // printf("%d NEIGHBORS: %d\n", TOS_NODE_ID, keyPtr[i]);
             call Hashmap.insert(keyPtr[i], call Hashmap.get(keyPtr[i]) - 1);
         }
 
@@ -117,9 +119,12 @@ implementation {
                 dbg(NEIGHBOR_CHANNEL, "Removed %d from neighbor table\n", i);
             }
         }
-
+        makePack(&package, TOS_NODE_ID, 0, 1, PROTOCOL_NEIGHBOR_PING, 0, &payload, PACKET_MAX_PAYLOAD_SIZE);
         call SimpleSend.send(package, AM_BROADCAST_ADDR);
     }
-
+    command uint32_t* NeighborDiscovery.getNeighbors() {
+        
+        return call Hashmap.getKeys();
+    }
     event void updateTimer.fired() {}
 }
