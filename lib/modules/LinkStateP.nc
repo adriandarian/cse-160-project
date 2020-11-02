@@ -77,7 +77,7 @@ implementation{
     command void LinkState.LSHandler(pack *package) {
         uint16_t i;
         LSA *incomingLSA = (uint8_t *)package->payload;
-        bool notInLinkTable = TRUE;
+        uint16_t notInLinkTable = 1;
         LSA temporaryLSA;
         
 
@@ -86,7 +86,7 @@ implementation{
             temporaryLSA = call LinkTable.get(i);
 
             if (temporaryLSA.source == package->src) {
-                notInLinkTable = FALSE;
+                notInLinkTable = 0;
                 break;
             }
         }
@@ -110,10 +110,15 @@ implementation{
 
     command void LinkState.printRoutingTable() {
         uint16_t i, j;
-
+        // uint32_t *keyPtr = call RoutingTable.getKeys();
+        // if(call RoutingTable.isEmpty() == FALSE){
+        //     for(i = 0; i < call RoutingTable.size(); i++){
+        //         call RoutingTable.remove(i);
+        //     }
+        // }
         dbg(ROUTING_CHANNEL, "Source Node: %d\n", TOS_NODE_ID);
         printf("{\ndestination: nextHop,  cost\n");
-        for (i = 0; i < call RoutingTable.size() + 1; i++) {
+        for (i = 0; i < call RoutingTable.size()+1 ; i++) {
                 // printf("Path = %d", i);
                 
                 // j = i;
@@ -164,7 +169,8 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-        call UpdateTimer.startPeriodic(20000);
+        call UpdateTimer.startPeriodic(100000);
+        
 
         return;
     }
@@ -177,6 +183,7 @@ implementation{
         LSATuple LSATList[neighborListSize];
         // printNeighbors(neighbors, neighborListSize);
         for (i = 0; i < neighborListSize; i++) {
+            // printf("%d UPDATE NEGHBORS: %d\n", TOS_NODE_ID,neighbors[i]);
             makeLSATuple(&LSAT, neighbors[i], 1);
             LSATList[i] = LSAT;
         }
@@ -187,63 +194,24 @@ implementation{
         makePack(&sendPackage, TOS_NODE_ID, AM_BROADCAST_ADDR, MAX_TTL, PROTOCOL_LINKED_STATE, sequenceNum++, &linkStateAdvertisement, PACKET_MAX_PAYLOAD_SIZE);
         // printLSA(&linkStateAdvertisement);
         call LinkStateSender.send(sendPackage, AM_BROADCAST_ADDR);
-        call RoutingTableTimer.startOneShot(10000);
+        call RoutingTableTimer.startOneShot(500);
         return;
     }
 
     event void RoutingTableTimer.fired() {
-        uint16_t i, j, k;
-        uint16_t idx;
-        LSA currentLSA;
-        uint32_t *neighbors = call NeighborDiscovery.getNeighbors();
-        uint16_t neighborListSize = call NeighborDiscovery.size();
-        uint16_t linkTableSize = call LinkTable.size();
-
-        // if (call NeighborList.size() != neighborListSize) {
-        //     dbg(ROUTING_CHANNEL, "The size of the neighbors are different\n");
-        // }
-        // call NeighborDiscovery.print();
-        for (i = 0; i < neighborListSize; i++) {
-            // dbg(ROUTING_CHANNEL, "node: %d, NeighborList: [%d], neighbors: [%d]\n", TOS_NODE_ID, call NeighborList.get(i), neighbors[i]);
-            // if (call NeighborList.get(i) != neighbors[i]) {
-            //     neighborsHaveChanged = TRUE;
-            //     dbg(ROUTING_CHANNEL, "The neighbors have changed\n");
-            //     break;
-            // }
-        }
-
-        // if (neighborsHaveChanged) {
-        //     dbg(ROUTING_CHANNEL, "The neighbors have changed\n");
-        //     neighborsHaveChanged = FALSE;
-        // }        
-
-        // printLinkTable();
+        uint16_t i;
+        uint32_t *keyPtr = call RoutingTable.getKeys();
         
-        for (i = 0; i < linkTableSize; i++) {
-            currentLSA = call LinkTable.get(i);
-
-            if (currentLSA.source == TOS_NODE_ID) {
-                for (j = 0; j < currentLSA.linkStateSize; j++) {
-                    for (k = 0; k < call NeighborDiscovery.size(); k++) {
-                        
-                        if (currentLSA.linkStates[j].neighborAddress != neighbors[k]) {
-                            currentLSA.linkStates[j].cost = 10000;
-                            // printf("pain.\n");
-                        }
-                        
-                        
-                    }
-
-                    call LinkTable.pushback(currentLSA);
-                    call LinkTable.popfront();
-                }
+        // printLinkTable();
+        if(call RoutingTable.isEmpty() == FALSE){
+            for(i = 0; i < call RoutingTable.size(); i++){
+                
+                call RoutingTable.remove(i);
             }
         }
-        
-
-        // printLinkTable();
-        findShortestPath();        
+        findShortestPath();
         // call LinkState.printRoutingTable();
+        call LinkTable.empty();
 
         return;
     }
@@ -298,7 +266,6 @@ implementation{
     void printLinkTable() {
         uint16_t i, j;
         LSA currentLSA;
-
         dbg(ROUTING_CHANNEL, "Src: %d with size %d [\n", TOS_NODE_ID, call LinkTable.size());
         for (i = 0; i < call LinkTable.size(); i++) {
             currentLSA = call LinkTable.get(i);
@@ -478,7 +445,7 @@ implementation{
                 // }
             }
         }
-
+        
         return;
     }
 }
