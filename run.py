@@ -19,25 +19,26 @@ def main():
     # Add the main channels. These channels are declared in includes/channels.h
     s.addChannel(s.COMMAND_CHANNEL)
     s.addChannel(s.GENERAL_CHANNEL)
-    # s.addChannel(s.FLOODING_CHANNEL)
     s.addChannel(s.LOG_CHANNEL)
 
     # After sending a ping, simulate a little to prevent collision.
+
+    # Allow Routing Table to Build
     s.runTime(100)
-    s.ping(1, 3, "1->3")
-    s.runTime(10)
-    s.ping(2, 1, "2->1")
-    s.runTime(10)
-    s.ping(2, 3, "2->3")
-    s.runTime(10)
-    s.ping(3, 1, "3->1")
-    s.runTime(10)
-    s.ping(3, 2, "3->2")
-    s.runTime(20)
-    s.ping(1, 5, "1->5")
-    s.runTime(20)
-    s.ping(1, 5, "1->5")
-    s.runTime(20) 
+
+    s.runTime(300)
+    s.testServer(1) # we need address and port here
+    s.runTime(60)
+
+    s.testClient(4) # we need address, source port, destination port, and transfer
+    s.runTime(1)
+    s.runTime(1000)
+
+    s.clientClose(4)
+    s.runTime(1)
+    s.runTime(1000)
+
+
 
 if __name__ == '__main__':
     main()
