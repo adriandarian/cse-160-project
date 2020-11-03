@@ -1,4 +1,4 @@
-#include "../../packet.h"
+#include "../../includes/packet.h"
 #include "../../includes/socket.h"
 
 /**
@@ -21,7 +21,7 @@ interface Transport{
     * @Side Client/Server
     * @return
     *    socket_t - return a socket file descriptor which is a number
-    *    associated with a socket. If you are unable to allocated
+    *    associated with a socket. If you are unable to allocate
     *    a socket then return a NULL socket_t.
     */
    command socket_t socket();
@@ -33,7 +33,7 @@ interface Transport{
     *       you are binding.
     * @param
     *    socket_addr_t *addr: the source port and source address that
-    *       you are biding to the socket, fd.
+    *       you are binding to the socket, fd.
     * @Side Client/Server
     * @return error_t - SUCCESS if you were able to bind this socket, FAIL
     *       if you were unable to bind.

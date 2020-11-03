@@ -6,7 +6,7 @@
 #include "packet.h"
 
 enum{
-	SEND_BUFFER_SIZE = 128
+	SEND_BUFFER_SIZE = 128,
 };
 
 typedef struct sendInfo{

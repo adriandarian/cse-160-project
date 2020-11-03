@@ -7,13 +7,15 @@ import sys
 from TOSSIM import *
 from CommandMsg import *
 
-
 class TestSim:
     moteids = []
     # COMMAND TYPES
     CMD_PING = 0
     CMD_NEIGHBOR_DUMP = 1
     CMD_ROUTE_DUMP = 3
+    CMD_TEST_CLIENT = 4
+    CMD_TEST_SERVER = 5
+    CMD_CLIENT_CLOSE = 6
 
     # CHANNELS - see includes/channels.h
     COMMAND_CHANNEL = "command"
@@ -52,11 +54,11 @@ class TestSim:
         topoFile = 'topo/' + topoFile
         f = open(topoFile, "r")
         self.numMote = int(f.readline())
-        print('Number of Motes'), self.numMote
+        print('Number of Motes {0}'.format(self.numMote))
         for line in f:
             s = line.split()
             if s:
-                print(" "), s[0], " ", s[1], " ", s[2]
+                print("S: {0}, N: {1}, Noise: {2}".format(s[0], s[1], s[2]))
                 self.r.add(int(s[0]), int(s[1]), float(s[2]))
                 if not int(s[0]) in self.moteids:
                     self.moteids = self.moteids + [int(s[0])]
@@ -80,7 +82,7 @@ class TestSim:
                 self.t.getNode(i).addNoiseTraceReading(val)
 
         for i in self.moteids:
-            print("Creating noise model for "), i
+            print("Creating noise model for {0}".format(i))
             self.t.getNode(i).createNoiseModel()
 
     def bootNode(self, nodeID):
@@ -118,8 +120,8 @@ class TestSim:
         self.pkt.setDestination(dest)
         self.pkt.deliver(dest, self.t.time() + 5)
 
-    def ping(self, source, dest, msg):
-        self.sendCMD(self.CMD_PING, source, "{0}{1}".format(chr(dest), msg))
+    def ping(self, source, destination, message):
+        self.sendCMD(self.CMD_PING, source, "{0}{1}".format(chr(destination), message))
 
     def neighborDMP(self, destination):
         self.sendCMD(self.CMD_NEIGHBOR_DUMP, destination, "neighbor command")
@@ -128,5 +130,17 @@ class TestSim:
         self.sendCMD(self.CMD_ROUTE_DUMP, destination, "routing command")
 
     def addChannel(self, channelName, out=sys.stdout):
-        print('Adding Channel'), channelName
+        print('Adding Channel {0}'.format(channelName))
         self.t.addChannel(channelName, out)
+
+    def testServer(self, address, port):
+        print("Listening on port {0}...".format(port))
+        self.sendCMD(self.CMD_TEST_SERVER, address, "transport command")
+    
+    def testClient(self, destination, sourcePort, destinationPort, transfer):
+        print("Connecting node {0}'s port {1} to server's port {2}...".format(destination, sourcePort, destinationPort))
+        self.sendCMD(self.CMD_TEST_CLIENT, destination, "transport command")
+
+    # def clientClose(self, clientAddress, destination, sourcePort, destinationPort):
+    #     print("Killing node {0}'s connection from port {1} to server's {2}".format(clientAddress, sourcePort, destinationPort))
+    #     self.sendCMD(self.CMD_CLIENT_CLOSE, clientAddress, destination, sourcePort, destinationPort)

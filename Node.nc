@@ -24,6 +24,7 @@ module Node{
    uses interface NeighborDiscovery;
    uses interface Flooding;
    uses interface LinkState;
+   uses interface TCP;
 }
 
 implementation{
@@ -119,9 +120,24 @@ implementation{
 
    event void CommandHandler.printDistanceVector() {}
 
-   event void CommandHandler.setTestServer() {}
+   event void CommandHandler.setTestServer(uint16_t address) {
+      uint8_t port = 80;
+      dbg(TRANSPORT_CHANNEL, "Server: Node %hu listening on port %hhu...\n", address, port);
+      call TCP.testServer(address, port);
+   }
 
-   event void CommandHandler.setTestClient() {}
+   event void CommandHandler.setTestClient(uint16_t destination) {
+      // uint8_t sourcePort = 3000;
+      // uint8_t destinationPort = 80;
+      // uint16_t transfer = 1000;
+      // dbg(TRANSPORT_CHANNEL, "Client: Connecting node %hu's port %hhu to server's port %hhu...\n", destination, sourcePort, destinationPort);
+      // call TCP.testClient(destination, sourcePort, destinationPort, transfer);
+   }
+
+   // event void CommandHandler.closeClient(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
+   //    dbg(TRANSPORT_CHANNEL, "Killing node %hu's connection from port %hhu to server's %hhu\n", clientAddress, sourcePort, destinationPort);
+   //    call TCP.closeClient(clientAddress, destination, sourcePort, destinationPort);
+   // }
 
    event void CommandHandler.setAppServer() {}
 

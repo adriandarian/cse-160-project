@@ -48,4 +48,8 @@ implementation {
     // Link State
     components LinkStateC;
     Node.LinkState->LinkStateC;
+
+    // TCP
+    components TCPC;
+    Node.TCP->TCPC;
 }

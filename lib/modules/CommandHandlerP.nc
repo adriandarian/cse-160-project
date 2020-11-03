@@ -67,16 +67,23 @@ implementation{
                 signal CommandHandler.printRouteTable();
                 break;
 
+            case CMD_TEST_SERVER:
+                dbg(COMMAND_CHANNEL, "Command Type: Server\n");
+                signal CommandHandler.setTestServer(msg->dest);
+                break;
+                
             case CMD_TEST_CLIENT:
                 dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                signal CommandHandler.setTestClient();
+                signal CommandHandler.setTestClient(msg->dest);
                 break;
 
-            case CMD_TEST_SERVER:
-                dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                signal CommandHandler.setTestServer();
-                break;
+            // case CMD_CLIENT_CLOSE:
+            //     dbg(COMMAND_CHANNEL, "Command Type: Client Close\n");
+            //     signal CommandHandler.closeClient(msg->dest);
+            //     break;
 
+            case CMD_KILL:
+            case CMD_ERROR:
             default:
                 dbg(COMMAND_CHANNEL, "CMD_ERROR: \"%d\" does not match any known commands.\n", msg->id);
                 break;

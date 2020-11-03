@@ -2,7 +2,7 @@
 #define LINKSTATE_H
 
 enum{
-	MAX_LINK_STATE = 20
+	MAX_LINK_STATE = 20,
 };
 
 typedef nx_struct LS{
