@@ -38,7 +38,7 @@ implementation {
         call updateNeighborTable.startPeriodic(2000); //update evey 10 seconds 
     }
 
-    command void NeighborDiscovery.pingHandle(pack * package) {
+    command void NeighborDiscovery.pingHandle(pack* package) {
         if (package->protocol == PROTOCOL_NEIGHBOR_PING && package->TTL > 0) {
             // Use the same package in the reply, so decrease the TTL by 1 and set the source to this TOS_NODE_ID
             // Also change the protocol to a ping reply so when the neighboring nodes recive it they dont forward it

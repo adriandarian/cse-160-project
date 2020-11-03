@@ -15,6 +15,21 @@ implementation{
 
     /*
      * #######################################
+     *              Modules
+     * #######################################
+     */
+
+    components RandomC as Random;
+    TransportP.Random -> Random;
+
+    components new SimpleSendC(AM_PACK) as TransportSenderC;
+    TransportP.TransportSender->TransportSenderC;
+
+    components new TimerMilliC() as HandshakeTimerC;
+    TransportP.HandshakeTimer->HandshakeTimerC;
+
+    /*
+     * #######################################
      *              Data Structures
      * #######################################
      */

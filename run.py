@@ -19,28 +19,21 @@ def main():
     # Add the main channels. These channels are declared in includes/channels.h
     s.addChannel(s.COMMAND_CHANNEL)
     s.addChannel(s.GENERAL_CHANNEL)
-    s.addChannel(s.NEIGHBOR_CHANNEL)
-    s.addChannel(s.ROUTING_CHANNEL)
     s.addChannel(s.TRANSPORT_CHANNEL)
     s.addChannel(s.LOG_CHANNEL)
 
     # After sending a ping, simulate a little to prevent collision.
-    s.runTime(100)
-    for i in range(s.numMote + 1):
-        s.runTime(20)
-        s.routeDMP(i)
-
     s.runTime(300)
     s.testServer(1, 80) # @params address, port 
     s.runTime(60)
-    # print("about to start a new client")
-    # s.testClient(4, 3000, 80, 1000) # @params destination, srcPort, destPort, transfer 
-    # s.runTime(1)
-    # s.runTime(1000)
 
-    # s.clientClose(4, 1, 3000, 80) # @params clientAddress, destination, srcPort, destPort
-    # s.runTime(1)
-    # s.runTime(1000)
+    s.testClient(2, 1, 81, 80, 1000) # @params clientAddress, destination, srcPort, destPort, transfer 
+    s.runTime(1)
+    s.runTime(1000)
+
+    s.clientClose(2, 1, 81, 80) # @params clientAddress, destination, srcPort, destPort
+    s.runTime(1)
+    s.runTime(1000)
 
 
 

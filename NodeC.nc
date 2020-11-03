@@ -52,4 +52,8 @@ implementation {
     // TCP
     components TCPC;
     Node.TCP->TCPC;
+
+    // Transport
+    components TransportC;
+    Node.Transport->TransportC;
 }

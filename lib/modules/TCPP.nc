@@ -39,19 +39,15 @@ implementation{
      */
 
     command void TCP.testServer(uint16_t address, uint8_t port) {
-        socket_addr_t *socket_address;
+        socket_addr_t socket_address;
         fd = call Transport.socket();
-        dbg(TRANSPORT_CHANNEL, "received a socket\n");
 
         // Only source info
-        socket_address->addr = address; // NODE_ID
-        socket_address->port = port; 
+        socket_address.addr = TOS_NODE_ID; // NODE_ID
+        socket_address.port = port; 
 
-        dbg(TRANSPORT_CHANNEL, "socket address: %hu, %hhu\n", socket_address->addr, socket_address->port);
-
-        if (call Transport.bind(fd, socket_address) == SUCCESS) { 
-            // call ServerTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
-            dbg(TRANSPORT_CHANNEL, "timer fired\n");
+        if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
+            call ServerTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
             return;
         }
 
@@ -59,24 +55,27 @@ implementation{
     }
 
     command void TCP.testClient(uint16_t destination, uint8_t sourcePort, uint8_t destinationPort, uint16_t transfer) {
-        // socket_addr_t *socket_address;
-        // socket_addr_t *server_address;
-        // fd = call Transport.socket();
-        // dbg(TRANSPORT_CHANNEL, "Opening a Client socket relationship\n");
+        socket_addr_t socket_address;
+        socket_addr_t server_address;
+        fd = call Transport.socket();
 
-        // // Only source info.
-        // socket_address->addr = TOS_NODE_ID;
-        // socket_address->port = sourcePort;
-        // call Transport.bind(fd, socket_address);
+        // Only source info.
+        socket_address.addr = TOS_NODE_ID;
+        socket_address.port = sourcePort;
 
-        // // Only dest info.
-        // server_address->addr = destination;
-        // server_address->port = destinationPort;
+        call Transport.bind(fd, &socket_address);
 
-        // if (call Transport.connect(fd, server_address)) {
-        //     call ClientTimer.startOneShot(CLIENT_WRITE_TIMER);
-        //     data = transfer;
-        // }
+        // Only dest info.
+        server_address.addr = destination;
+        server_address.port = destinationPort;
+
+        if (call Transport.connect(fd, &server_address) == SUCCESS) {
+            call ClientTimer.startOneShot(CLIENT_WRITE_TIMER);
+            data = transfer;
+            return;
+        }
+
+        dbg(TRANSPORT_CHANNEL, "This should never happen\n");
     }
 
     command void TCP.closeClient(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
@@ -91,15 +90,10 @@ implementation{
      */
 
     event void ServerTimer.fired() {
-        socket_t newFd;
+        socket_t newFd = call Transport.accept(fd);
         uint16_t i;
-        dbg(TRANSPORT_CHANNEL, "Attempting to accept socket\n");
-        newFd = call Transport.accept(fd);
-
-        dbg(TRANSPORT_CHANNEL, "Got a newFd from %hhu\n", fd);
 
         if (newFd != NULL) {
-            dbg(TRANSPORT_CHANNEL, "adding a new socket to the acceptable sockets\n");
             call AcceptedSockets.pushback(newFd);
         }
 
@@ -109,6 +103,7 @@ implementation{
     }
 
     event void ClientTimer.fired() {
+        dbg(TRANSPORT_CHANNEL, "Client has connected to Server\n");
         // if all data in buffer has been written or the buffer empty
         //     create new data for the buffer
         //     // data is from 0 to [transfer]

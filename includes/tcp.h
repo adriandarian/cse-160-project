@@ -8,14 +8,14 @@ enum{
 };
 
 typedef nx_struct TCPPack{
-    nx_uint16_t source_port;
-    nx_uint16_t destination_port;
-    nx_uint32_t sequence_num;
-    nx_uint32_t acknowledgement_num;
-    nx_uint16_t flag;
+    nx_uint8_t source_port;
+    nx_uint8_t destination_port;
+    nx_uint32_t sequence_number;
+    nx_uint32_t acknowledgement_number;
+    nx_uint8_t flag;
     nx_uint16_t advertisement_window;
     nx_uint32_t checksum;
-    nx_uint16_t payload[max_payload_size];
+    nx_uint16_t payload;
 }TCPPack;
 
 enum{
@@ -27,15 +27,15 @@ enum{
     FINACK = 5,
 };
 
-// void makeTCPPacket(TCPPack* TCP, nx_uint16_t source_port, nx_uint16_t destination_port, nx_uint32_t sequence_num, nx_uint32_t acknowledgement_num, nx_uint16_t flag, nx_uint16_t advertisement_window, nx_uint32_t checksum, nx_uint16_t payload[max_payload_size]) {
-//     TCP->source_port = source_port;
-//     TCP->destination_port = destination_port;
-//     TCP->sequence_num = sequence_num;
-//     TCP->acknowledgement_num = acknowledgement_num;
-//     TCP->flag = flag;
-//     TCP->advertisement_window = advertisement_window;
-//     TCP->checksum = checksum;
-//     TCP->payload = payload;
-// }
+void makeTCPPacket(TCPPack* TCP, nx_uint16_t source_port, nx_uint16_t destination_port, nx_uint32_t sequence_number, nx_uint32_t acknowledgement_number, nx_uint16_t flag, nx_uint16_t advertisement_window, nx_uint32_t checksum, nx_uint16_t payload) {
+    TCP->source_port = source_port;
+    TCP->destination_port = destination_port;
+    TCP->sequence_number = sequence_number;
+    TCP->acknowledgement_number = acknowledgement_number;
+    TCP->flag = flag;
+    TCP->advertisement_window = advertisement_window;
+    TCP->checksum = checksum;
+    TCP->payload = payload;
+}
 
 #endif

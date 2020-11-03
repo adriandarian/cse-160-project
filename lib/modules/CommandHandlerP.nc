@@ -69,18 +69,18 @@ implementation{
 
             case CMD_TEST_SERVER:
                 dbg(COMMAND_CHANNEL, "Command Type: Server\n");
-                signal CommandHandler.setTestServer(msg->dest);
+                signal CommandHandler.setTestServer(msg->dest, buff[0]);
                 break;
                 
             case CMD_TEST_CLIENT:
                 dbg(COMMAND_CHANNEL, "Command Type: Client\n");
-                signal CommandHandler.setTestClient(msg->dest);
+                signal CommandHandler.setTestClient(msg->dest, buff[0], buff[1], buff[2], (buff[3] << 8) | buff[4]);
                 break;
 
-            // case CMD_CLIENT_CLOSE:
-            //     dbg(COMMAND_CHANNEL, "Command Type: Client Close\n");
-            //     signal CommandHandler.closeClient(msg->dest);
-            //     break;
+            case CMD_CLIENT_CLOSE:
+                dbg(COMMAND_CHANNEL, "Command Type: Client Close\n");
+                signal CommandHandler.closeClient(msg->dest, buff[0], buff[1], buff[2]);
+                break;
 
             case CMD_KILL:
             case CMD_ERROR:

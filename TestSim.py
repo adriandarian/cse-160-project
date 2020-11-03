@@ -134,13 +134,10 @@ class TestSim:
         self.t.addChannel(channelName, out)
 
     def testServer(self, address, port):
-        print("Listening on port {0}...".format(port))
-        self.sendCMD(self.CMD_TEST_SERVER, address, "transport command")
+        self.sendCMD(self.CMD_TEST_SERVER, address, "{0}".format(chr(port)))
     
-    def testClient(self, destination, sourcePort, destinationPort, transfer):
-        print("Connecting node {0}'s port {1} to server's port {2}...".format(destination, sourcePort, destinationPort))
-        self.sendCMD(self.CMD_TEST_CLIENT, destination, "transport command")
+    def testClient(self, clientAddress, destination, sourcePort, destinationPort, transfer):
+        self.sendCMD(self.CMD_TEST_CLIENT, clientAddress, "{0}{1}{2}{3}{4}".format(chr(destination), chr(sourcePort), chr(destinationPort), chr(transfer >> 8), chr(transfer & 0xFF)))
 
-    # def clientClose(self, clientAddress, destination, sourcePort, destinationPort):
-    #     print("Killing node {0}'s connection from port {1} to server's {2}".format(clientAddress, sourcePort, destinationPort))
-    #     self.sendCMD(self.CMD_CLIENT_CLOSE, clientAddress, destination, sourcePort, destinationPort)
+    def clientClose(self, clientAddress, destination, sourcePort, destinationPort):
+        self.sendCMD(self.CMD_CLIENT_CLOSE, clientAddress, "{0}{1}{2}".format(chr(destination), chr(sourcePort), chr(destinationPort)))
