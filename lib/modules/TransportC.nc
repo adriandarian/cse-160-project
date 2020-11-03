@@ -22,6 +22,9 @@ implementation{
     components RandomC as Random;
     TransportP.Random -> Random;
 
+    components LinkStateC;
+    TransportP.LinkState->LinkStateC;
+
     components new SimpleSendC(AM_PACK) as TransportSenderC;
     TransportP.TransportSender->TransportSenderC;
 

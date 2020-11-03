@@ -1,6 +1,8 @@
 #ifndef __SOCKET_H__
 #define __SOCKET_H__
 
+#include "tcp.h"
+
 enum{
     MAX_NUM_OF_SOCKETS = 10,
     ROOT_SOCKET_ADDR = 255,
@@ -30,7 +32,7 @@ typedef uint8_t socket_t;
 
 // State of a socket. 
 typedef struct socket_store_t{
-    uint8_t flag;
+    enum tcp_flag flag;
     enum socket_state state;
     socket_port_t src;
     socket_addr_t dest;

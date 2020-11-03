@@ -13,6 +13,7 @@ module TransportP{
 
     // Modules
     uses interface Random;
+    uses interface LinkState;
     uses interface SimpleSend as TransportSender;
     uses interface Timer<TMilli> as HandshakeTimer;
 
@@ -21,7 +22,7 @@ module TransportP{
 }
 
 implementation{
-    pack package;
+    pack handshakePackage;
     TCPPack handshakeTCP;
 
     /*
@@ -45,11 +46,13 @@ implementation{
 
         if (SocketsSize < MAX_NUM_OF_SOCKETS) {
             fd = SocketsSize + 1;
+
+            socket.flag = DATA;
             socket.state = CLOSED;
+            socket.src = TOS_NODE_ID;
+
             call Sockets.insert(fd, socket);
         }
-
-        dbg(TRANSPORT_CHANNEL, "File Descriptor: %hu\n", fd);
 
         return fd;
     }
@@ -59,18 +62,10 @@ implementation{
         
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
-
-            dbg(TRANSPORT_CHANNEL, "addr: {addr: %hu, port: %hhu}\n", addr->addr, addr->port);
-
             socket.dest = *addr;
 
-            dbg(TRANSPORT_CHANNEL, "socket: {addr: %hu, port: %hhu}\n", socket.dest.addr, socket.dest.port);
-
-            call Sockets.remove(fd);
             call Sockets.insert(fd, socket);
 
-            printSockets();
-            
             return SUCCESS;
         }
 
@@ -115,28 +110,65 @@ implementation{
         uint16_t payload = TCPPackage->payload;
         uint16_t i;
         socket_store_t socket;
-        uint32_t ackNum = sequenceNumber+1;
+        uint32_t ackNum = sequenceNumber + 1;
         uint32_t seqNum = call Random.rand16() % 1000;
 
         switch(flag) {
             case(SYN):
-                // syn recived, find and bind socket with state of listen
-                // socket.state = SYN_RCVD
-                // return SYN_ACK with acknum = recived seqNum+1 (next expected packet) and random seqNum
-                // 
                 for (i = 1; i <= call Sockets.size(); i++) {
                     socket = call Sockets.get(i);
 
                     if (socket.state == LISTEN) {
+                        socket.flag = SYN_ACK;
                         socket.state = SYN_RCVD;
+
+                        call Sockets.insert(i, socket);
+
                         break;
                     }   
                 }
-                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYNACK, advertisementWindow, 0, 0);
-                makePack(&package,TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP,PACKET_MAX_PAYLOAD_SIZE);
-            break;
-            case(SYNACK):
-                // SYN_ACK recived
+
+                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYN_ACK, advertisementWindow, 0, 0);
+                makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+
+                call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
+
+                return SUCCESS;
+            case(SYN_ACK):
+                for (i = 1; i <= call Sockets.size(); i++) {
+                    socket = call Sockets.get(i);
+
+                    if (socket.state == SYN_SENT) {
+                        socket.flag = ACK;
+                        socket.state = ESTABLISHED;
+
+                        call Sockets.insert(i, socket);
+                        
+                        break;
+                    }   
+                }
+
+                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum + 1, ackNum + 1, ACK, advertisementWindow, 0, 0);
+                makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+
+                call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
+
+                return SUCCESS;
+            case(ACK):
+                for (i = 1; i <= call Sockets.size(); i++) {
+                    socket = call Sockets.get(i);
+
+                    if (socket.state == SYN_RCVD) {                        
+                        socket.flag = ACK;
+                        socket.state = ESTABLISHED;
+                        
+                        call Sockets.insert(i, socket);
+
+                        break;
+                    }   
+                }
+
+                return SUCCESS;
         }
 
         return FAIL;
@@ -156,20 +188,22 @@ implementation{
         uint16_t advertisement_window = 1; // for stop and wait
         uint32_t checksum;
         uint16_t payload = 0;
-
-        dbg(TRANSPORT_CHANNEL, "attempting a connection between client and server\n");
         
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
-            dbg(TRANSPORT_CHANNEL, "socket: {addr: %hu, port: %hhu}, addr: {addr: %hu, port: %hhu}\n", socket.dest.addr, socket.dest.port, addr->addr, addr->port);
+            if (socket.state == CLOSED) {
+                sourcePort = socket.dest.port;
+                socket.flag = SYN;
+                socket.state = SYN_SENT;
 
-            sourcePort = socket.dest.port;
+                call Sockets.insert(fd, socket);
 
-            makeTCPPacket(&handshakeTCP, sourcePort, destinationPort, sequenceNum, ackNum, flag, advertisement_window, checksum, payload);
-            makePack(&package,TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP,PACKET_MAX_PAYLOAD_SIZE);
+                makeTCPPacket(&handshakeTCP, sourcePort, destinationPort, sequenceNum, ackNum, flag, advertisement_window, checksum, payload);
+                makePack(&handshakePackage, TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
-            call TransportSender.send(package, addr->addr);
-            call HandshakeTimer.startOneShot(5000);
+                call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr));
+                call HandshakeTimer.startOneShot(20000);
+            }
         }
 
         return FAIL;
@@ -184,7 +218,6 @@ implementation{
 
                 socket.state = CLOSED;
 
-                call Sockets.remove(fd);
                 call Sockets.insert(fd, socket);
 
                 return SUCCESS;
@@ -207,7 +240,6 @@ implementation{
 
                 socket.state = LISTEN;
 
-                call Sockets.remove(fd);
                 call Sockets.insert(fd, socket);
 
                 return SUCCESS;
@@ -223,7 +255,19 @@ implementation{
      * #######################################
      */
 
-    event void HandshakeTimer.fired() {}
+    event void HandshakeTimer.fired() {
+        uint16_t i;
+        socket_store_t socket;
+
+        for (i = 1; i <= call Sockets.size(); i++) {
+            socket = call Sockets.get(i);
+
+            if (socket.state == ESTABLISHED) {
+                dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, i);
+                printSockets();
+            }
+        }
+    }
 
     /*
      * #######################################
@@ -237,7 +281,7 @@ implementation{
 
         for (i = 1; i <= call Sockets.size(); i++) {
             socket = call Sockets.get(i);
-            dbg(TRANSPORT_CHANNEL, "Socket: {addr: %hu, port: %hhu}\n", socket.dest.addr, socket.dest.port);
+            printf("Socket: {\n\tflag: %hhu\n\tstate: %d\n\tsrc: %hhu\n\taddr: %hu\n\tport: %hhu\n}\n", socket.flag, socket.state, socket.src, socket.dest.addr, socket.dest.port);
         }
     }
 }

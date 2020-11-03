@@ -5,7 +5,7 @@
 #ifndef __COMMAND_MSG_H__
 #define __COMMAND_MSG_H__
 
-# include "protocol.h"
+#include "protocol.h"
 
 enum{
 	CMD_PACKET_HEADER_LENGTH = 3,

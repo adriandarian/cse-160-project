@@ -7,25 +7,25 @@ enum{
     CLIENT_WRITE_TIMER = 20000,
 };
 
-typedef nx_struct TCPPack{
-    nx_uint8_t source_port;
-    nx_uint8_t destination_port;
-    nx_uint32_t sequence_number;
-    nx_uint32_t acknowledgement_number;
-    nx_uint8_t flag;
-    nx_uint16_t advertisement_window;
-    nx_uint32_t checksum;
-    nx_uint16_t payload;
-}TCPPack;
-
-enum{
-    DATA = 0,
-    ACK = 1,
-    SYN = 2,
-    SYNACK = 3,
-    FIN = 4,
-    FINACK = 5,
+enum tcp_flag{
+    DATA,
+    SYN,
+    SYN_ACK,
+    ACK,
+    FIN,
+    FIN_ACK,
 };
+
+typedef struct TCPPack{
+    uint8_t source_port;
+    uint8_t destination_port;
+    uint32_t sequence_number;
+    uint32_t acknowledgement_number;
+    enum tcp_flag flag;
+    uint16_t advertisement_window;
+    uint32_t checksum;
+    uint16_t payload;
+}TCPPack;
 
 void makeTCPPacket(TCPPack* TCP, nx_uint16_t source_port, nx_uint16_t destination_port, nx_uint32_t sequence_number, nx_uint32_t acknowledgement_number, nx_uint16_t flag, nx_uint16_t advertisement_window, nx_uint32_t checksum, nx_uint16_t payload) {
     TCP->source_port = source_port;
