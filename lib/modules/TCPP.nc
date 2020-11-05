@@ -70,6 +70,7 @@ implementation{
         server_address.port = destinationPort;
 
         if (call Transport.connect(fd, &server_address) == SUCCESS) {
+            dbg(TRANSPORT_CHANNEL, "Begin write\n");
             call ClientTimer.startOneShot(CLIENT_WRITE_TIMER);
             data = transfer;
             return;

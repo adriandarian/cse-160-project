@@ -180,8 +180,6 @@ implementation{
 
     command error_t Transport.connect(socket_t fd, socket_addr_t *addr) {
         socket_store_t socket;
-        uint8_t sourcePort;
-        uint8_t destinationPort = addr->port;
         uint32_t sequenceNum = call Random.rand16() % 1000;
         uint32_t ackNum = 0;
         uint8_t flag = SYN;
@@ -191,18 +189,20 @@ implementation{
         
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
+
             if (socket.state == CLOSED) {
-                sourcePort = socket.dest.port;
                 socket.flag = SYN;
                 socket.state = SYN_SENT;
 
                 call Sockets.insert(fd, socket);
 
-                makeTCPPacket(&handshakeTCP, sourcePort, destinationPort, sequenceNum, ackNum, flag, advertisement_window, checksum, payload);
+                makeTCPPacket(&handshakeTCP, socket.dest.port, addr->port, sequenceNum, ackNum, flag, advertisement_window, checksum, payload);
                 makePack(&handshakePackage, TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
-                call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr));
-                call HandshakeTimer.startOneShot(20000);
+                if (call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr)) == SUCCESS) {
+                    dbg(TRANSPORT_CHANNEL, "Successful sending of TCP Packet\n");
+                    call HandshakeTimer.startOneShot(20000);
+                }
             }
         }
 
