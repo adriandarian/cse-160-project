@@ -16,6 +16,11 @@
  */
 
 interface Transport{
+   command error_t hasConnected();
+   command void printSocket(socket_t fd);
+   command void printSockets();
+   command socket_t getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort);
+
    /**
     * Get a socket if there is one available.
     * @Side Client/Server

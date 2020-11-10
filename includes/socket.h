@@ -34,8 +34,8 @@ typedef uint8_t socket_t;
 typedef struct socket_store_t{
     enum tcp_flag flag;
     enum socket_state state;
-    socket_port_t src;
-    socket_addr_t dest;
+    socket_port_t src; // source port
+    socket_addr_t dest; // destination to which the socket is connecting/established to [IP]
 
     // This is the sender portion.
     uint8_t sendBuff[SOCKET_BUFFER_SIZE];

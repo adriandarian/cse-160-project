@@ -20,6 +20,9 @@ implementation{
     components new TimerMilliC() as ServerTimerC;
     TCPP.ServerTimer->ServerTimerC;
 
+    components new TimerMilliC() as ConnectionTimerC;
+    TCPP.ConnectionTimer->ConnectionTimerC;
+
     components new TimerMilliC() as ClientTimerC;
     TCPP.ClientTimer->ClientTimerC;
 

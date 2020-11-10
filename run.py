@@ -35,6 +35,14 @@ def main():
     s.runTime(1)
     s.runTime(1000)
 
+    s.testClient(3, 1, 81, 80, 1000) # @params clientAddress, destination, srcPort, destPort, transfer 
+    s.runTime(1)
+    s.runTime(1000)
+
+    s.clientClose(3, 1, 81, 80) # @params clientAddress, destination, srcPort, destPort
+    s.runTime(1)
+    s.runTime(1000)
+
 
 
 if __name__ == '__main__':

@@ -24,20 +24,59 @@ module TransportP{
 implementation{
     pack handshakePackage;
     TCPPack handshakeTCP;
+    error_t clientConnected = FAIL;
 
     /*
      * #######################################
      *              Prototypes
      * #######################################
      */
-
-    void printSockets();
+    
+    error_t checkForEstablishedSocket();
 
     /*
      * #######################################
      *              Commands
      * #######################################
      */
+
+    command error_t Transport.hasConnected() {
+        error_t temp = clientConnected;
+        clientConnected = FAIL;
+        return temp;
+    }
+
+    command void Transport.printSocket(socket_t fd) {
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+            printf("Socket[%hu]: {\n\tflag: %hhu\n\tstate: %d\n\tsrc: %hhu\n\tdest: {\n\t\taddr: %hu\n\t\tport: %hhu\n\t}\n}\n", fd, socket.flag, socket.state, socket.src, socket.dest.addr, socket.dest.port);
+        }
+    }
+
+    command void Transport.printSockets() {
+        uint16_t i;
+
+        for (i = 1; i <= call Sockets.size(); i++) {
+            call Transport.printSocket(i);
+        }
+    }
+
+    command socket_t Transport.getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
+        uint16_t i;
+        socket_store_t socket;
+
+        for (i = 1; i <= call Sockets.size(); i++) {
+            socket = call Sockets.get(i);
+
+            if (TOS_NODE_ID == clientAddress && socket.src == sourcePort && socket.dest.addr == destination && socket.dest.port == destinationPort) {
+                return i;
+            }
+        }
+
+        return 0;
+    }
 
     command socket_t Transport.socket() {
         socket_t fd = NULL;
@@ -62,7 +101,8 @@ implementation{
         
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
-            socket.dest = *addr;
+            socket.src = addr->port;
+
 
             call Sockets.insert(fd, socket);
 
@@ -77,11 +117,12 @@ implementation{
     command socket_t Transport.accept(socket_t fd) {
         socket_store_t socket;
 
-        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
+        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS - 1) {
             socket = call Sockets.get(fd);
 
             if (socket.state == LISTEN) {
                 // make a copy in next socket
+                call Sockets.insert(fd + 1, socket);
                 return fd;
             }
         }
@@ -191,6 +232,7 @@ implementation{
             socket = call Sockets.get(fd);
 
             if (socket.state == CLOSED) {
+                socket.dest = *addr;
                 socket.flag = SYN;
                 socket.state = SYN_SENT;
 
@@ -200,8 +242,7 @@ implementation{
                 makePack(&handshakePackage, TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
                 if (call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr)) == SUCCESS) {
-                    dbg(TRANSPORT_CHANNEL, "Successful sending of TCP Packet\n");
-                    call HandshakeTimer.startOneShot(20000);
+                    call HandshakeTimer.startPeriodic(20000);
                 }
             }
         }
@@ -256,16 +297,8 @@ implementation{
      */
 
     event void HandshakeTimer.fired() {
-        uint16_t i;
-        socket_store_t socket;
-
-        for (i = 1; i <= call Sockets.size(); i++) {
-            socket = call Sockets.get(i);
-
-            if (socket.state == ESTABLISHED) {
-                dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, i);
-                printSockets();
-            }
+        if (checkForEstablishedSocket() == SUCCESS) {
+            call HandshakeTimer.stop();
         }
     }
 
@@ -275,13 +308,19 @@ implementation{
      * #######################################
      */
 
-    void printSockets() {
+    error_t checkForEstablishedSocket() {
         uint16_t i;
         socket_store_t socket;
 
         for (i = 1; i <= call Sockets.size(); i++) {
             socket = call Sockets.get(i);
-            printf("Socket: {\n\tflag: %hhu\n\tstate: %d\n\tsrc: %hhu\n\taddr: %hu\n\tport: %hhu\n}\n", socket.flag, socket.state, socket.src, socket.dest.addr, socket.dest.port);
+
+            if (socket.state == ESTABLISHED) {
+                clientConnected = SUCCESS;
+                return SUCCESS;
+            }
         }
+
+        return FAIL;
     }
 }
