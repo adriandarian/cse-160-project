@@ -20,6 +20,7 @@ interface Transport{
    command void printSocket(socket_t fd);
    command void printSockets();
    command socket_t getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort);
+   command error_t validateSocketBuffer(socket_t fd);
 
    /**
     * Get a socket if there is one available.
@@ -72,7 +73,7 @@ interface Transport{
     *       submit.
     * @Side For your project, only client side. This could be both though.
     * @return uint16_t - return the amount of data you are able to write
-    *    from the pass buffer. This may be shorter then bufflen
+    *    from the pass buffer. This maybe shorter then bufflen
     */
    command uint16_t write(socket_t fd, uint8_t *buff, uint16_t bufflen);
 

@@ -125,11 +125,15 @@ implementation{
         time = time + 1;
     }
 
-    event void ClientTimer.fired() {
+    event void ClientTimer.fired() {        
         // if all data in buffer has been written or the buffer empty
-        //     create new data for the buffer
-        //     // data is from 0 to [transfer]
+        if (call Transport.validateSocketBuffer(fd) == SUCCESS) {
+            //     create new data for the buffer
+            //     // data is from 0 to [transfer]
+        }
+
         // subtract the amount of data you were able to write(fd, buffer, buffer len)
+
     }
 
     /*

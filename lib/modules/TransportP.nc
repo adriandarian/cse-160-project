@@ -24,6 +24,8 @@ module TransportP
 
 implementation
 {
+    pack dataPackage;
+    TCPPack dataTCP;
     pack handshakePackage;
     TCPPack handshakeTCP;
     error_t clientConnected = FAIL;
@@ -88,6 +90,24 @@ implementation
         return 0;
     }
 
+    command error_t Transport.validateSocketBuffer(socket_t fd) {
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+
+            if (socket.state != ESTABLISHED) {
+                return FAIL;
+            } else {
+                // if ("current_buffer_size" == SOCKET_BUFFER_SIZE && "current_buffer_size" == 0) {
+                //     return SUCCESS;
+                // }
+            }
+        }
+
+        return FAIL;
+    }
+
     command socket_t Transport.socket()
     {
         socket_t fd = NULL;
@@ -146,18 +166,19 @@ implementation
         return NULL;
     }
 
-    command uint16_t Transport.write(socket_t fd, uint8_t * buff, uint16_t bufflen)
+    command uint16_t Transport.write(socket_t fd, uint8_t* buff, uint16_t bufflen)
     {
         socket_store_t socket;
         uint16_t curByte = 0;
         uint8_t senderBuffer;
-        //check if socket is valid:
+
+        // check if socket is valid:
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS)
         {
             if (call Sockets.contains(fd))
             {
                 socket = call Sockets.get(fd);
-                //if socket is valid, it has to be on an established connection:
+                // if socket is valid, it has to be on an established connection:
                 if (socket.state != ESTABLISHED)
                 {
                     // couldnt read any bytes
@@ -169,21 +190,32 @@ implementation
                     senderBuffer = abs((SOCKET_BUFFER_SIZE - socket.lastWritten % SOCKET_BUFFER_SIZE) + (socket.lastAck % SOCKET_BUFFER_SIZE));
 
 
-                        while (bufflen > curByte && 0 < senderBuffer)
+                    while (bufflen > curByte && 0 < senderBuffer)
                     {
-                        //write bytes??
+                        // write bytes??
+                        socket.lastWritten++;
                         memcpy(&socket.sendBuff[socket.lastWritten % SOCKET_BUFFER_SIZE], buff + curByte, 1);
 
                         curByte++;
                     }
-                    //return bytes
+
+                    // send pack
+                    makeTCPPacket(&dataTCP, socket.dest.port, socket.src, 0, 0, DATA, 1, 0, 0); // FIX SEQ AND ACK NUMS
+                    makePack(&dataPackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &dataTCP, max_payload_size);
+                    call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
+
+                    // return bytes
                     return curByte;
                 }
             }
+
+            return 0;
         }
+
+        return 0;
     }
 
-    command error_t Transport.receive(pack * package)
+    command error_t Transport.receive(pack* package)
     {
         uint16_t packageDestination = package->dest;
         uint16_t packageSource = package->src;
@@ -203,9 +235,35 @@ implementation
         socket_store_t socket;
         uint32_t ackNum = sequenceNumber + 1;
         uint32_t seqNum = call Random.rand16() % 1000;
-
+        uint16_t curByte;
+        uint8_t recieverBuffer;
+        
         switch (flag)
         {
+        case (DATA):
+            curByte = 0;
+            for (i = 1; i <= call Sockets.size(); i++)
+                {
+                socket = call Sockets.get(i);
+
+                if (socket.state == ESTABLISHED)
+                {
+                  if ((socket.nextExpected % SOCKET_BUFFER_SIZE) > (socket.lastRead % SOCKET_BUFFER_SIZE)) {
+                        recieverBuffer = (socket.nextExpected % SOCKET_BUFFER_SIZE) - (socket.lastRead % SOCKET_BUFFER_SIZE);
+                    }
+                    else {
+                        recieverBuffer = SOCKET_BUFFER_SIZE - (socket.lastRead % SOCKET_BUFFER_SIZE) + (socket.nextExpected % SOCKET_BUFFER_SIZE);
+                    }
+
+                    while (curByte < max_payload_size && 0 < recieverBuffer) {
+                        socket.lastRead++;
+                        memcpy(&socket.rcvdBuff[socket.lastRead % SOCKET_BUFFER_SIZE], TCPPackage + curByte,1);
+                        curByte++;
+                        
+                    }                    
+                }
+                break;
+            }
         case (SYN):
             for (i = 1; i <= call Sockets.size(); i++)
             {
@@ -272,8 +330,46 @@ implementation
         return FAIL;
     }
 
-    command uint16_t Transport.read(socket_t fd, uint8_t * buff, uint16_t bufflen)
+    command uint16_t Transport.read(socket_t fd, uint8_t* buff, uint16_t bufflen)
     {
+        socket_store_t socket;
+        uint16_t curByte = 0;
+        uint8_t recieverBuffer;
+        // check if socket is valid:
+        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS)
+        {
+            if (call Sockets.contains(fd))
+            {
+                socket = call Sockets.get(fd);
+                // if socket is valid, it has to be on an established connection:
+                if (socket.state != ESTABLISHED)
+                {
+                    // couldnt read any bytes
+                    return 0;
+                }
+                else if (socket.state == ESTABLISHED)
+                {
+                    if ((socket.nextExpected % SOCKET_BUFFER_SIZE) > (socket.lastRead % SOCKET_BUFFER_SIZE)) {
+                        recieverBuffer = (socket.nextExpected % SOCKET_BUFFER_SIZE) - (socket.lastRead % SOCKET_BUFFER_SIZE);
+                    }
+                    else {
+                        recieverBuffer = SOCKET_BUFFER_SIZE - (socket.lastRead % SOCKET_BUFFER_SIZE) + (socket.nextExpected % SOCKET_BUFFER_SIZE);
+                    }
+
+                    while (curByte < bufflen && 0 < recieverBuffer) {
+                        socket.lastRead++;
+                        memcpy(buff, socket.rcvdBuff[socket.lastRead % SOCKET_BUFFER_SIZE], 1);
+                        curByte++;
+                        buff++;
+                    }
+                    
+                    // return bytes
+                    return curByte;
+                }
+            }
+        }
+
+        return 0;
     }
 
     command error_t Transport.connect(socket_t fd, socket_addr_t * addr)
