@@ -38,16 +38,16 @@ typedef struct socket_store_t{
     socket_addr_t dest; // destination to which the socket is connecting/established to [IP]
 
     // This is the sender portion.
-    uint8_t sendBuff[SOCKET_BUFFER_SIZE];
-    uint8_t lastWritten;
-    uint8_t lastAck;
-    uint8_t lastSent;
+    uint16_t sendBuff[SOCKET_BUFFER_SIZE];
+    uint16_t lastWritten;
+    uint16_t lastAck;
+    uint16_t lastSent;
 
     // This is the receiver portion
-    uint8_t rcvdBuff[SOCKET_BUFFER_SIZE];
-    uint8_t lastRead;
-    uint8_t lastRcvd;
-    uint8_t nextExpected;
+    uint16_t rcvdBuff[SOCKET_BUFFER_SIZE];
+    uint16_t lastRead;
+    uint16_t lastRcvd;
+    uint16_t nextExpected;
 
     uint16_t RTT;
     uint8_t effectiveWindow;

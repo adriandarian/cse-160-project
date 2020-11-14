@@ -26,6 +26,9 @@ implementation{
     uint16_t data;
     uint16_t tempData;
     uint16_t time = 1;
+    uint16_t bytesWritten = 0;
+    uint16_t bytesTransfered = 0;
+
 
     /*
      * #######################################
@@ -50,7 +53,12 @@ implementation{
         socket_address.port = port; 
 
         if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
-            call ServerTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
+            call AcceptedSockets.pushback(fd);
+            
+            if (call Transport.listen(fd) == SUCCESS && !(call ServerTimer.isRunning())) {
+                call ServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
+            }
+
             return;
         }
 
@@ -98,6 +106,7 @@ implementation{
     event void ServerTimer.fired() {
         socket_t newFd = call Transport.accept(fd);
         uint16_t i;
+        uint16_t buffer[SOCKET_BUFFER_SIZE];
 
         if (newFd != NULL) {
             call AcceptedSockets.pushback(newFd);
@@ -105,6 +114,7 @@ implementation{
 
         for (i = 0; i < call AcceptedSockets.size(); i++) {
             // read data and print
+            call Transport.read(i, buffer, SOCKET_BUFFER_SIZE);
         }
     }
 
@@ -116,7 +126,7 @@ implementation{
             call Transport.printSockets();
             dbg(TRANSPORT_CHANNEL, "Begin write\n");
             data = tempData;
-            call ClientTimer.startOneShot(CLIENT_WRITE_TIMER);
+            call ClientTimer.startPeriodic(CLIENT_WRITE_TIMER);
             call ConnectionTimer.stop();
             return;
         }
@@ -125,15 +135,41 @@ implementation{
         time = time + 1;
     }
 
-    event void ClientTimer.fired() {        
+    event void ClientTimer.fired() {   
+        uint8_t buffer[SOCKET_BUFFER_SIZE];
+        uint16_t bytesWritten;
+        uint16_t i;
+
+        if (data <= 0) {
+            call ClientTimer.stop();
+            return;
+        }
+
         // if all data in buffer has been written or the buffer empty
         if (call Transport.validateSocketBuffer(fd) == SUCCESS) {
-            //     create new data for the buffer
-            //     // data is from 0 to [transfer]
+            // create new data for the buffer
+            // data is from 0 to [transfer]
+            dbg(TRANSPORT_CHANNEL, "Building buffer: (data = %hu)\n", data);
+            for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                if (data < SOCKET_BUFFER_SIZE && i > data) {
+                    buffer[i] = 0;
+                } else {
+                    buffer[i] = data - i;
+                }
+            }
         }
 
         // subtract the amount of data you were able to write(fd, buffer, buffer len)
+        // Bufferlen = MAX_BUFF - bytesTransferred OR bytesWritten - bytesTransfered (whatever is smaller)
+        bytesWritten = call Transport.write(fd, buffer, SOCKET_BUFFER_SIZE);
 
+        if (data > SOCKET_BUFFER_SIZE) {
+            data = data - bytesWritten;
+        } else {
+            data = 0;
+        }
+
+        return;
     }
 
     /*
