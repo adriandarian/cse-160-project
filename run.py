@@ -27,7 +27,7 @@ def main():
     s.testServer(1, 80) # @params address, port 
     s.runTime(60)
 
-    s.testClient(3, 1, 81, 80, 200) # @params clientAddress, destination, srcPort, destPort, transfer 
+    s.testClient(3, 1, 81, 80, 5) # @params clientAddress, destination, srcPort, destPort, transfer 
     s.runTime(1)
     s.runTime(1000)
 

@@ -2,7 +2,7 @@
 #define TCP_H
 
 enum{
-    max_payload_size = 4,
+    MAX_PAYLOAD_SIZE = 128,
     ATTEMPT_CONNECTION_TIME = 20000,
     CLIENT_WRITE_TIMER = 20000,
 };
@@ -24,10 +24,10 @@ typedef struct TCPPack{
     enum tcp_flag flag;
     uint16_t advertisement_window;
     uint32_t checksum;
-    uint16_t payload;
+    uint8_t payload[MAX_PAYLOAD_SIZE];
 }TCPPack;
 
-void makeTCPPacket(TCPPack* TCP, nx_uint16_t source_port, nx_uint16_t destination_port, nx_uint32_t sequence_number, nx_uint32_t acknowledgement_number, nx_uint16_t flag, nx_uint16_t advertisement_window, nx_uint32_t checksum, nx_uint16_t payload) {
+void makeTCPPacket(TCPPack* TCP, uint16_t source_port, uint16_t destination_port, uint32_t sequence_number, uint32_t acknowledgement_number, uint16_t flag, uint16_t advertisement_window, uint32_t checksum, uint8_t* payload) {
     TCP->source_port = source_port;
     TCP->destination_port = destination_port;
     TCP->sequence_number = sequence_number;
@@ -35,7 +35,8 @@ void makeTCPPacket(TCPPack* TCP, nx_uint16_t source_port, nx_uint16_t destinatio
     TCP->flag = flag;
     TCP->advertisement_window = advertisement_window;
     TCP->checksum = checksum;
-    TCP->payload = payload;
+    // TCP->payload = payload;
+    memcpy(TCP->payload, payload, MAX_PAYLOAD_SIZE);
 }
 
 #endif

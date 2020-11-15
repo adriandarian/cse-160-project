@@ -7,6 +7,7 @@
 #include "../../includes/packet.h"
 #include "../../includes/socket.h"
 #include "../../includes/tcp.h"
+#include "../../includes/math.h"
 
 module TCPP{
     provides interface TCP;
@@ -26,8 +27,7 @@ implementation{
     uint16_t data;
     uint16_t tempData;
     uint16_t time = 1;
-    uint16_t bytesWritten = 0;
-    uint16_t bytesTransfered = 0;
+    uint16_t bytesWritten = 1;
 
 
     /*
@@ -112,10 +112,17 @@ implementation{
             call AcceptedSockets.pushback(newFd);
         }
 
+        for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+            buffer[i] = 0;
+        }
+
         for (i = 0; i < call AcceptedSockets.size(); i++) {
             // read data and print
-            call Transport.read(i, buffer, SOCKET_BUFFER_SIZE);
+            // dbg(TRANSPORT_CHANNEL, "Accepted Socket(%d): %d\n", call AcceptedSockets.size(), call AcceptedSockets.get(i));
+            call Transport.read(call AcceptedSockets.get(i), buffer, SOCKET_BUFFER_SIZE);
         }
+
+        // call ServerTimer.stop();
     }
 
     event void ConnectionTimer.fired() {
@@ -124,8 +131,8 @@ implementation{
             time = 1;
             dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, fd);
             call Transport.printSockets();
-            dbg(TRANSPORT_CHANNEL, "Begin write\n");
             data = tempData;
+            dbg(TRANSPORT_CHANNEL, "Begin write: (data = %hu)\n", data);
             call ClientTimer.startPeriodic(CLIENT_WRITE_TIMER);
             call ConnectionTimer.stop();
             return;
@@ -137,40 +144,33 @@ implementation{
 
     event void ClientTimer.fired() {   
         uint8_t buffer[SOCKET_BUFFER_SIZE];
-        uint16_t bytesWritten;
-        uint16_t i;
+        uint16_t currentByte = bytesWritten;
+        uint16_t bytesToTransfer;
+        uint16_t bytesTransferred;
+        uint16_t i = 0;
 
-        if (data <= 0) {
+        if (currentByte > data) {
             call ClientTimer.stop();
             return;
         }
 
-        // if all data in buffer has been written or the buffer empty
-        if (call Transport.validateSocketBuffer(fd) == SUCCESS) {
-            // create new data for the buffer
-            // data is from 0 to [transfer]
-            dbg(TRANSPORT_CHANNEL, "Building buffer: (data = %hu)\n", data);
-            for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                if (data < SOCKET_BUFFER_SIZE && i > data) {
-                    buffer[i] = 0;
-                } else {
-                    buffer[i] = data - i;
-                }
-            }
+        for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+            buffer[i] = 0;
+        }
+        
+        for (i = 0; currentByte <= data && i < SOCKET_BUFFER_SIZE; i++) {
+            buffer[i] = currentByte;
+            currentByte++;
         }
 
         // subtract the amount of data you were able to write(fd, buffer, buffer len)
-        // Bufferlen = MAX_BUFF - bytesTransferred OR bytesWritten - bytesTransfered (whatever is smaller)
-        bytesWritten = call Transport.write(fd, buffer, SOCKET_BUFFER_SIZE);
-
-        if (data > SOCKET_BUFFER_SIZE) {
-            data = data - bytesWritten;
-        } else {
-            data = 0;
-        }
+        bytesTransferred = call Transport.write(fd, buffer, i);
+        bytesWritten += bytesTransferred;
 
         return;
     }
+
+  
 
     /*
      * #######################################

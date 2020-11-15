@@ -8,8 +8,7 @@
 #include "../../includes/socket.h"
 #include "../../includes/tcp.h"
 
-module TransportP
-{
+module TransportP {
     provides interface Transport;
 
     // Modules
@@ -22,8 +21,7 @@ module TransportP
     uses interface Hashmap<socket_store_t> as Sockets;
 }
 
-implementation
-{
+implementation {
     pack dataPackage;
     TCPPack dataTCP;
     pack handshakePackage;
@@ -125,12 +123,12 @@ implementation
                 socket.rcvdBuff[i] = 0;
             }
 
-            pos = call Random.rand16() % 128;
+            pos = call Random.rand16() % 128 * 0;
             socket.lastWritten = pos;
             socket.lastAck = pos;
             socket.lastSent = pos;
 
-            pos = call Random.rand16() % 128;
+            pos = call Random.rand16() % 128 * 0;
             socket.lastRead = pos;
             socket.lastRcvd = pos;
             socket.nextExpected = pos;
@@ -164,15 +162,15 @@ implementation
     command socket_t Transport.accept(socket_t fd) {
         socket_store_t socket;
 
-        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS - 1) {
-            socket = call Sockets.get(fd);
+        // if (fd > 0 && fd < MAX_NUM_OF_SOCKETS - 1) {
+        //     socket = call Sockets.get(fd);
 
-            if (socket.state == LISTEN) {
-                // make a copy in next socket
-                call Sockets.insert(fd + 1, socket);
-                return fd;
-            }
-        }
+        //     if (socket.state == LISTEN) {
+        //         // make a copy in next socket
+        //         call Sockets.insert(fd + 1, socket);
+        //         return fd;
+        //     }
+        // }
 
         return NULL;
     }
@@ -181,30 +179,29 @@ implementation
         socket_store_t socket;
         uint16_t bytesWritten = 0;
         uint16_t i;
-        uint16_t temp;
+        TCPPack *k;
 
         // check if socket is valid:
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
             if (call Sockets.contains(fd)) {
                 socket = call Sockets.get(fd);
-                temp = socket.lastWritten;
-                dbg(TRANSPORT_CHANNEL, "last Written = %hhu\n", socket.lastWritten);
+
                 // if socket is valid, it has to be on an established connection:
                 if (socket.state != ESTABLISHED) {
                     // couldnt read any bytes
                     return 0;
                 } else if (socket.state == ESTABLISHED) {
-                    while (socket.lastWritten < bufflen && getSendBufferAvailable(fd) > 0) {
+                    printf("sendBuff(%hhu)[", socket.lastWritten);
+                    for (i = 0; socket.lastWritten < SOCKET_BUFFER_SIZE && getSendBufferAvailable(fd) > 0 && bytesWritten <= bufflen; i++) {
                         memcpy(&socket.sendBuff[socket.lastWritten], buff + bytesWritten, 1);
                         socket.lastWritten++;
                         bytesWritten++;
                     }
-                    dbg(TRANSPORT_CHANNEL, "lastWritten = %hhu, buffer size = %hhu, occupied = %hu\n", socket.lastWritten, SOCKET_BUFFER_SIZE, getSendBufferOccupied(fd));
+
                     if (socket.lastWritten >= SOCKET_BUFFER_SIZE && getSendBufferAvailable(fd) > 0) {
                         socket.lastWritten = 0;
                     }
-                    dbg(TRANSPORT_CHANNEL, "lastWritten = %hhu\n", socket.lastWritten);
-                    printf("sendBuff(%hhu)[", temp);
+
                     for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
                         printf("%hhu", socket.sendBuff[i]);
                         if (i != SOCKET_BUFFER_SIZE - 1) {
@@ -216,8 +213,10 @@ implementation
                     call Sockets.insert(fd, socket);
 
                     // send pack
-                    makeTCPPacket(&dataTCP, socket.dest.port, socket.src, 0, 0, DATA, 1, 0, 0); // FIX SEQ AND ACK NUMS
-                    makePack(&dataPackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &dataTCP, max_payload_size);
+                    makeTCPPacket(&dataTCP, socket.dest.port, socket.src, 0, 0, DATA, 1, 0, &socket.sendBuff); // FIX SEQ AND ACK NUMS
+                    
+                    makePack(&dataPackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &dataTCP, MAX_PAYLOAD_SIZE);
+                    
                     call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
 
                     // return bytes
@@ -245,34 +244,48 @@ implementation
         uint8_t flag = TCPPackage->flag;
         uint16_t advertisementWindow = TCPPackage->advertisement_window;
         uint32_t checksum = TCPPackage->checksum;
-        uint16_t payload = TCPPackage->payload;
+        uint8_t *payload = TCPPackage->payload;
         uint16_t i;
         socket_store_t socket;
         uint32_t ackNum = sequenceNumber + 1;
         uint32_t seqNum = call Random.rand16() % 1000;
-        uint16_t curByte;
+        uint16_t curByte = 0;
         uint8_t recieverBuffer;
         
         switch (flag) {
             case (DATA):
-                curByte = 0;
-
+                printf("payload[");
+                for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                    printf("%hhu", payload + i);
+                    if (i != SOCKET_BUFFER_SIZE - 1) {
+                        printf(", ");
+                    }
+                }
+                printf("]\n");
                 for (i = 1; i <= call Sockets.size(); i++) {
                     socket = call Sockets.get(i);
 
                     if (socket.state == ESTABLISHED) {
-                    if ((socket.nextExpected % SOCKET_BUFFER_SIZE) > (socket.lastRead % SOCKET_BUFFER_SIZE)) {
-                            recieverBuffer = (socket.nextExpected % SOCKET_BUFFER_SIZE) - (socket.lastRead % SOCKET_BUFFER_SIZE);
-                        } else {
-                            recieverBuffer = SOCKET_BUFFER_SIZE - (socket.lastRead % SOCKET_BUFFER_SIZE) + (socket.nextExpected % SOCKET_BUFFER_SIZE);
-                        }
-
-                        while (curByte < max_payload_size && 0 < recieverBuffer) {
+                        printf("rcvdBuff(%hhu)[", socket.lastRead);
+                        for (i = 0; socket.lastRead < SOCKET_BUFFER_SIZE && getReceiveBufferAvailable(i) > 0 && curByte <= SOCKET_BUFFER_SIZE; i++) {
+                            memcpy(&socket.rcvdBuff[socket.lastRead], payload + curByte, 1);
                             socket.lastRead++;
-                            memcpy(&socket.rcvdBuff[socket.lastRead % SOCKET_BUFFER_SIZE], TCPPackage + curByte,1);
                             curByte++;
-                            
-                        }                    
+                        }      
+
+                        if (socket.lastRead >= SOCKET_BUFFER_SIZE && getReceiveBufferAvailable(i) > 0) {
+                            socket.lastRead = 0;
+                        }      
+
+                        for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                            printf("%hhu", socket.rcvdBuff[i]);
+                            if (i != SOCKET_BUFFER_SIZE - 1) {
+                                printf(", ");
+                            }
+                        }
+                        printf("]\n");
+
+                        call Sockets.insert(i, socket);        
                     }
 
                     break;
@@ -291,7 +304,8 @@ implementation
                     }
                 }
 
-                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYN_ACK, advertisementWindow, 0, 0);
+                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYN_ACK, advertisementWindow, 0, &payload);
+
                 makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
                 call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
@@ -311,7 +325,8 @@ implementation
                     }
                 }
 
-                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum + 1, ackNum + 1, ACK, advertisementWindow, 0, 0);
+                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum + 1, ackNum + 1, ACK, advertisementWindow, 0, &payload);
+
                 makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
                 call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
@@ -329,10 +344,6 @@ implementation
 
                         break;
                     }
-
-                    if (socket.state == ESTABLISHED) {
-                        socket.lastAck = socket.lastSent;
-                    }
                 }
 
                 return SUCCESS;
@@ -343,34 +354,31 @@ implementation
 
     command uint16_t Transport.read(socket_t fd, uint8_t* buff, uint16_t bufflen) {
         socket_store_t socket;
-        uint16_t curByte = 0;
-        uint8_t recieverBuffer;
-
+        uint16_t bytesRead = 0;
+        uint16_t i;
+        bool hasData = FALSE;
+        
         // check if socket is valid:
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
             if (call Sockets.contains(fd)) {
                 socket = call Sockets.get(fd);
-
+                // dbg(TRANSPORT_CHANNEL, "socket state: %hu\n", socket.state);
                 // if socket is valid, it has to be on an established connection:
                 if (socket.state != ESTABLISHED) {
                     // couldnt read any bytes
                     return 0;
                 } else if (socket.state == ESTABLISHED) {
-                    if ((socket.nextExpected % SOCKET_BUFFER_SIZE) > (socket.lastRead % SOCKET_BUFFER_SIZE)) {
-                        recieverBuffer = (socket.nextExpected % SOCKET_BUFFER_SIZE) - (socket.lastRead % SOCKET_BUFFER_SIZE);
-                    } else {
-                        recieverBuffer = SOCKET_BUFFER_SIZE - (socket.lastRead % SOCKET_BUFFER_SIZE) + (socket.nextExpected % SOCKET_BUFFER_SIZE);
-                    }
+           
+                    for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                        if (socket.rcvdBuff[i] != 0) {
 
-                    while (curByte < bufflen && 0 < recieverBuffer) {
-                        socket.lastRead++;
-                        memcpy(buff, socket.rcvdBuff[socket.lastRead % SOCKET_BUFFER_SIZE], 1);
-                        curByte++;
-                        buff++;
+                        }
+                       
                     }
+                  
                     
                     // return bytes
-                    return curByte;
+                    return bytesRead;
                 }
             }
         }
@@ -385,7 +393,7 @@ implementation
         uint8_t flag = SYN;
         uint16_t advertisement_window = 1; // for stop and wait
         uint32_t checksum;
-        uint16_t payload = 0;
+        uint8_t buffer[SOCKET_BUFFER_SIZE];
 
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
@@ -396,8 +404,9 @@ implementation
                 socket.state = SYN_SENT;
 
                 call Sockets.insert(fd, socket);
+                
+                makeTCPPacket(&handshakeTCP, socket.dest.port, addr->port, sequenceNum, ackNum, flag, advertisement_window, checksum, buffer);
 
-                makeTCPPacket(&handshakeTCP, socket.dest.port, addr->port, sequenceNum, ackNum, flag, advertisement_window, checksum, payload);
                 makePack(&handshakePackage, TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
                 if (call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr)) == SUCCESS) {

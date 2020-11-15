@@ -57,6 +57,7 @@ implementation{
    }
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {      
+      uint16_t i;
       if (len == sizeof(pack)) {
          pack* message = (pack*) payload;
 
@@ -66,11 +67,12 @@ implementation{
          if (message->protocol == PROTOCOL_NEIGHBOR_PING || message->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
             // Handle Pings in Neighbor Discovery Module
             call NeighborDiscovery.pingHandle(message);
-         } else if (message->protocol == PROTOCOL_PING || message->protocol == PROTOCOL_PING_REPLY) {
+         } else if (message->protocol == PROTOCOL_PING || message->protocol == PROTOCOL_PING_REPLY || message->protocol == PROTOCOL_TCP) {
             // Handle Pings in Flooding Module
             if (message->dest == TOS_NODE_ID) {
-               dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
-               logPack(message);
+               call Transport.receive(message);
+               // dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
+               // logPack(message);
             } else {
                if (call LinkState.checkIfInRoutingTable(message->dest)) {
                   // Execute Flooding
@@ -83,9 +85,10 @@ implementation{
          } else if (message->protocol == PROTOCOL_LINKED_STATE) {
             call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
-         } else if (message->protocol == PROTOCOL_TCP) {
-            call Transport.receive(message);
          }
+         // else if (message->protocol == PROTOCOL_TCP) {
+         //    call Transport.receive(message);
+         // }
          
          return msg;
       }

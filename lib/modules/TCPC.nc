@@ -36,6 +36,6 @@ implementation{
      * #######################################
      */
 
-    components new ListC(uint8_t, 64) as AcceptedSocketsC;
+    components new ListC(uint8_t, 10) as AcceptedSocketsC;
     TCPP.AcceptedSockets->AcceptedSocketsC;
 }
