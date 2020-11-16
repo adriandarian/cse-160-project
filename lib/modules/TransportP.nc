@@ -16,6 +16,7 @@ module TransportP {
     uses interface LinkState;
     uses interface SimpleSend as TransportSender;
     uses interface Timer<TMilli> as HandshakeTimer;
+    uses interface Timer<TMilli> as StopAndWaitTimer;
 
     // Data Structures
     uses interface Hashmap<socket_store_t> as Sockets;
@@ -34,6 +35,7 @@ implementation {
      * #######################################
      */
 
+    void initSocket(uint8_t fd, uint8_t state);
     uint16_t getSendBufferOccupied(uint8_t fd);
     uint16_t getReceiveBufferOccupied(uint8_t fd);
     uint16_t getSendBufferAvailable(uint8_t fd);
@@ -63,7 +65,7 @@ implementation {
 
     command void Transport.printSockets() {
         uint16_t i;
-
+        dbg(TRANSPORT_CHANNEL, "\n");
         for (i = 1; i <= call Sockets.size(); i++) {
             call Transport.printSocket(i);
         }
@@ -112,31 +114,7 @@ implementation {
         if (SocketsSize < MAX_NUM_OF_SOCKETS) {
             fd = SocketsSize + 1;
 
-            socket.flag = DATA;
-            socket.state = CLOSED;
-            socket.src = 0;
-            socket.dest.addr = ROOT_SOCKET_ADDR;
-            socket.dest.port = ROOT_SOCKET_PORT;
-
-            for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                socket.sendBuff[i] = 0;
-                socket.rcvdBuff[i] = 0;
-            }
-
-            pos = call Random.rand16() % 128 * 0;
-            socket.lastWritten = pos;
-            socket.lastAck = pos;
-            socket.lastSent = pos;
-
-            pos = call Random.rand16() % 128 * 0;
-            socket.lastRead = pos;
-            socket.lastRcvd = pos;
-            socket.nextExpected = pos;
-
-            socket.RTT = 800;
-            socket.effectiveWindow = 0;
-
-            call Sockets.insert(fd, socket);
+            initSocket(fd, CLOSED);
         }
 
         return fd;
@@ -219,6 +197,8 @@ implementation {
                     
                     call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
 
+                    call StopAndWaitTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
+
                     // return bytes
                     return bytesWritten;
                 }
@@ -236,7 +216,7 @@ implementation {
         uint16_t packageSequence = package->seq;
         uint8_t TTL = package->TTL;
         uint8_t protocol = package->protocol;
-        TCPPack *TCPPackage = package->payload;
+        TCPPack *TCPPackage =  package->payload;
         uint8_t sourcePort = TCPPackage->source_port;
         uint8_t destinationPort = TCPPackage->destination_port;
         uint32_t sequenceNumber = TCPPackage->sequence_number;
@@ -254,14 +234,15 @@ implementation {
         
         switch (flag) {
             case (DATA):
-                printf("payload[");
-                for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                    printf("%hhu", payload + i);
-                    if (i != SOCKET_BUFFER_SIZE - 1) {
-                        printf(", ");
-                    }
-                }
-                printf("]\n");
+                // printf("size of payload: %d\n", sizeof(payload));
+                // printf("payload[");
+                // for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                //     printf("%hhu", payload[i]);
+                //     if (i != SOCKET_BUFFER_SIZE - 1) {
+                //         printf(", ");
+                //     }
+                // }
+                // printf("]\n");
                 for (i = 1; i <= call Sockets.size(); i++) {
                     socket = call Sockets.get(i);
 
@@ -285,7 +266,15 @@ implementation {
                         }
                         printf("]\n");
 
-                        call Sockets.insert(i, socket);        
+                        call Sockets.insert(i, socket);     
+                        dbg(TRANSPORT_CHANNEL, "Data packet recieved: sending ACK...\n");
+                        //stop and wait:
+                        ackNum = seqNum + 1;
+                        makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, ACK, advertisementWindow, 0, &payload);
+
+                        makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+
+                        call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
                     }
 
                     break;
@@ -302,6 +291,7 @@ implementation {
 
                         break;
                     }
+                    
                 }
 
                 makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYN_ACK, advertisementWindow, 0, &payload);
@@ -342,6 +332,44 @@ implementation {
 
                         call Sockets.insert(i, socket);
 
+                        break;
+                    }
+
+                    if (socket.state == ESTABLISHED) {
+                        dbg(TRANSPORT_CHANNEL, "ACK recieved, stopping timer, incremeting sequence num...\n");
+                        seqNum++;
+                        call StopAndWaitTimer.stop();
+                    }
+                }
+
+                return SUCCESS;
+            case (FIN):
+                for (i = 1; i <= call Sockets.size(); i++) {
+                    socket = call Sockets.get(i);
+
+                    if (socket.state == ESTABLISHED) {
+                        socket.state = LISTEN;
+                        socket.flag = FIN_ACK;
+                        call Sockets.insert(i, socket);
+                        break;
+                    }
+
+                    makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, FIN_ACK, advertisementWindow, 0, &payload);
+
+                    makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+
+                    call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
+                }
+
+                return SUCCESS;
+            case (FIN_ACK):
+                for (i = 1; i <= call Sockets.size(); i++) {
+                    socket = call Sockets.get(i);
+
+                    if (socket.state == LISTEN && socket.flag == FIN_ACK) {
+                        socket.state = CLOSED;
+                        socket.flag = FIN;
+                        call Sockets.insert(i, socket);
                         break;
                     }
                 }
@@ -420,14 +448,23 @@ implementation {
 
     command error_t Transport.close(socket_t fd) {
         socket_store_t socket;
+        uint8_t buffer[MAX_PAYLOAD_SIZE];
 
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
             if (call Sockets.contains(fd)) {
                 socket = call Sockets.get(fd);
+                
+                switch (socket.state) {
+                    case ESTABLISHED:
+                    case SYN_RCVD:
+                        initSocket(fd, CLOSED);
+                        makeTCPPacket(&handshakeTCP, TOS_NODE_ID, socket.dest.addr, 0, 0, FIN, 0, 0, buffer);
+                        makePack(&handshakePackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+                        call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
 
-                socket.state = CLOSED;
-
-                call Sockets.insert(fd, socket);
+                    default:
+                        initSocket(fd, CLOSED);
+                }
 
                 return SUCCESS;
             }
@@ -437,6 +474,18 @@ implementation {
     }
 
     command error_t Transport.release(socket_t fd) {
+        socket_store_t socket;
+
+        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
+            if (call Sockets.contains(fd)) {
+                socket = call Sockets.get(fd);
+                initSocket(fd, CLOSED);
+
+                return SUCCESS;
+            }
+        }
+
+        return FAIL;
     }
 
     command error_t Transport.listen(socket_t fd) {
@@ -469,11 +518,49 @@ implementation {
         }
     }
 
+    event void StopAndWaitTimer.fired() {
+        // retransmit
+        call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(dataPackage.dest));
+
+    }
+
     /*
      * #######################################
      *              Methods
      * #######################################
      */
+
+    void initSocket(uint8_t fd, uint8_t state) {
+        socket_store_t socket = call Sockets.get(fd);
+        uint16_t i;
+        uint16_t pos;
+
+        socket.flag = DATA;
+        socket.state = state;
+        socket.src = 0;
+        socket.dest.addr = ROOT_SOCKET_ADDR;
+        socket.dest.port = ROOT_SOCKET_PORT;
+
+        for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+            socket.sendBuff[i] = 0;
+            socket.rcvdBuff[i] = 0;
+        }
+
+        pos = call Random.rand16() % 128 * 0;
+        socket.lastWritten = pos;
+        socket.lastAck = pos;
+        socket.lastSent = pos;
+
+        pos = call Random.rand16() % 128 * 0;
+        socket.lastRead = pos;
+        socket.lastRcvd = pos;
+        socket.nextExpected = pos;
+
+        socket.RTT = 800;
+        socket.effectiveWindow = 0;
+
+        call Sockets.insert(fd, socket);
+    }
 
     uint16_t getSendBufferOccupied(uint8_t fd) {
         socket_store_t socket;

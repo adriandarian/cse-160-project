@@ -36,6 +36,7 @@ void makeTCPPacket(TCPPack* TCP, uint16_t source_port, uint16_t destination_port
     TCP->advertisement_window = advertisement_window;
     TCP->checksum = checksum;
     // TCP->payload = payload;
+
     memcpy(TCP->payload, payload, MAX_PAYLOAD_SIZE);
 }
 

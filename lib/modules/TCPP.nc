@@ -16,6 +16,7 @@ module TCPP{
     uses interface Timer<TMilli> as ServerTimer;
     uses interface Timer<TMilli> as ConnectionTimer;
     uses interface Timer<TMilli> as ClientTimer;
+    uses interface Timer<TMilli> as CloseTimer;
     uses interface Transport;
 
     // Data Structures
@@ -91,6 +92,7 @@ implementation{
 
         if (tempFd > 0 && tempFd <= MAX_NUM_OF_SOCKETS) {
             call Transport.close(tempFd);
+            call CloseTimer.startOneShot(120000);
             return;
         }
 
@@ -170,7 +172,10 @@ implementation{
         return;
     }
 
-  
+    event void CloseTimer.fired() {
+        call Transport.printSockets();
+        return;
+    }
 
     /*
      * #######################################

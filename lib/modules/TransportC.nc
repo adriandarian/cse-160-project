@@ -31,6 +31,9 @@ implementation{
     components new TimerMilliC() as HandshakeTimerC;
     TransportP.HandshakeTimer->HandshakeTimerC;
 
+    components new TimerMilliC() as StopAndWaitTimerC;
+    TransportP.StopAndWaitTimer->StopAndWaitTimerC;
+
     /*
      * #######################################
      *              Data Structures
