@@ -36,6 +36,10 @@ implementation {
      */
 
     void initSocket(uint8_t fd, uint8_t state);
+    uint16_t calcReceiverBuffer(uint8_t fd);
+    uint16_t calcSenderBuffer(uint8_t fd);
+    uint8_t calcAdvertisementWindow(uint8_t fd);
+    uint8_t calcEffectiveWindow(uint8_t fd);
     uint16_t getSendBufferOccupied(uint8_t fd);
     uint16_t getReceiveBufferOccupied(uint8_t fd);
     uint16_t getSendBufferAvailable(uint8_t fd);
@@ -105,11 +109,8 @@ implementation {
     }
 
     command socket_t Transport.socket() {
-        socket_t fd = NULL;
-        socket_store_t socket;
+        socket_t fd = 0;
         uint16_t SocketsSize = call Sockets.size();
-        uint16_t i;
-        uint8_t pos;
 
         if (SocketsSize < MAX_NUM_OF_SOCKETS) {
             fd = SocketsSize + 1;
@@ -144,8 +145,9 @@ implementation {
         //     socket = call Sockets.get(fd);
 
         //     if (socket.state == LISTEN) {
+        //         fd = fd + 1;
         //         // make a copy in next socket
-        //         call Sockets.insert(fd + 1, socket);
+        //         call Sockets.insert(fd, socket);
         //         return fd;
         //     }
         // }
@@ -157,7 +159,8 @@ implementation {
         socket_store_t socket;
         uint16_t bytesWritten = 0;
         uint16_t i;
-        TCPPack *k;
+        uint8_t* payload = (uint8_t*)dataTCP.payload;
+        uint8_t sequenceNumber;
 
         // check if socket is valid:
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
@@ -188,14 +191,28 @@ implementation {
                     }
                     printf("]\n");
 
+                    sequenceNumber = socket.lastSent + 1;
+
+                    for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                        memcpy(payload + i, &socket.sendBuff[socket.lastSent++ % SOCKET_BUFFER_SIZE], 1);
+                    }
+
                     call Sockets.insert(fd, socket);
 
                     // send pack
-                    makeTCPPacket(&dataTCP, socket.dest.port, socket.src, 0, 0, DATA, 1, 0, &socket.sendBuff); // FIX SEQ AND ACK NUMS
+                    makeTCPPacket(&dataTCP, socket.dest.port, socket.src, sequenceNumber, socket.nextExpected, DATA, socket.effectiveWindow, 0, payload); // FIX SEQ AND ACK NUMS
                     
-                    makePack(&dataPackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &dataTCP, MAX_PAYLOAD_SIZE);
+                    makePack(&dataPackage, 
+                    TOS_NODE_ID, 
+                    socket.dest.addr, 
+                    MAX_TTL, 
+                    PROTOCOL_TCP, 
+                    0, 
+                    &dataTCP, 
+                    sizeof(dataTCP));
                     
                     call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
+                    
 
                     call StopAndWaitTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
 
@@ -420,7 +437,7 @@ implementation {
         uint32_t ackNum = 0;
         uint8_t flag = SYN;
         uint16_t advertisement_window = 1; // for stop and wait
-        uint32_t checksum;
+        uint32_t checksum = 0;
         uint8_t buffer[SOCKET_BUFFER_SIZE];
 
         if (call Sockets.contains(fd)) {
@@ -562,6 +579,58 @@ implementation {
         call Sockets.insert(fd, socket);
     }
 
+    uint16_t calcReceiverBuffer(uint8_t fd) {
+        uint16_t lastRead;
+        uint16_t nextExpected;
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+
+            lastRead = socket.lastRead % SOCKET_BUFFER_SIZE;
+            nextExpected = socket.nextExpected % SOCKET_BUFFER_SIZE;
+
+            if (lastRead < nextExpected) {
+                return nextExpected - lastRead - 1;    
+            } else {
+                return SOCKET_BUFFER_SIZE - lastRead + nextExpected - 1;
+            }
+        }
+    }
+
+    uint16_t calcSenderBuffer(uint8_t fd) {
+        uint16_t lastAck;
+        uint16_t lastSent;
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+
+            lastAck = socket.lastAck % SOCKET_BUFFER_SIZE;
+            lastSent = socket.lastSent % SOCKET_BUFFER_SIZE;
+
+            if (lastAck <= lastSent) {
+                return lastSent - lastAck;
+            } else {
+                return SOCKET_BUFFER_SIZE - lastAck + lastSent;
+            }
+        }
+    }
+
+    uint8_t calcAdvertisementWindow(uint8_t fd) {
+        return SOCKET_BUFFER_SIZE - calcReceiverBuffer(fd);
+    }
+
+    uint8_t calcEffectiveWindow(uint8_t fd) {
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+            
+            return socket.effectiveWindow - calcSenderBuffer(fd);
+        }
+    }
+
     uint16_t getSendBufferOccupied(uint8_t fd) {
         socket_store_t socket;
 
@@ -576,6 +645,8 @@ implementation {
                 return socket.lastWritten - socket.lastSent;
             }
         }
+
+        return -1;
     }
 
     uint16_t getReceiveBufferOccupied(uint8_t fd) {
@@ -592,6 +663,8 @@ implementation {
                 return socket.lastRcvd - socket.lastRead;
             }
         }
+
+        return -1;
     }
 
     uint16_t getSendBufferAvailable(uint8_t fd) {
@@ -608,6 +681,8 @@ implementation {
                 return socket.lastAck + (SOCKET_BUFFER_SIZE - socket.lastWritten) - 1;
             }
         }
+
+        return -1;
     }
 
     uint16_t getReceiveBufferAvailable(uint8_t fd) {
@@ -624,6 +699,8 @@ implementation {
                 return socket.lastRead + (SOCKET_BUFFER_SIZE - socket.lastRcvd) - 1;
             }
         }
+
+        return -1;
     }
 
     error_t checkForEstablishedSocket() {

@@ -34,7 +34,7 @@ implementation{
 
    event void Boot.booted() {
       call AMControl.start();
-      // dbg(GENERAL_CHANNEL, "Booted\n");
+      dbg(GENERAL_CHANNEL, "Booted\n");
       // Initialize Neighbor Discovery as each node awakes
       call NeighborDiscovery.start();
 
@@ -44,7 +44,7 @@ implementation{
 
    event void AMControl.startDone(error_t err) {
       if (err == SUCCESS) {
-         // dbg(GENERAL_CHANNEL, "Radio On\n");
+         dbg(GENERAL_CHANNEL, "Radio On\n");
       } else {
          // Retry until successful
          call AMControl.start();
@@ -57,43 +57,38 @@ implementation{
    }
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {      
-      uint16_t i;
-      if (len == sizeof(pack)) {
-         pack* message = (pack*) payload;
+      pack* message = (pack*) payload;
 
-         // Output the full package being passed through
-         // logPack(message);
+      if (len != sizeof(pack)) {
+         dbg(GENERAL_CHANNEL, "Unknown Packet Type %u\n", len);
+         logPack(message);
 
-         if (message->protocol == PROTOCOL_NEIGHBOR_PING || message->protocol == PROTOCOL_NEIGHBOR_PING_REPLY) {
-            // Handle Pings in Neighbor Discovery Module
+         return msg;
+      }
+
+      switch (message->protocol) {
+         case PROTOCOL_NEIGHBOR_PING:
+         case PROTOCOL_NEIGHBOR_PING_REPLY:
             call NeighborDiscovery.pingHandle(message);
-         } else if (message->protocol == PROTOCOL_PING || message->protocol == PROTOCOL_PING_REPLY || message->protocol == PROTOCOL_TCP) {
-            // Handle Pings in Flooding Module
+            break;
+         case PROTOCOL_PING:
+         case PROTOCOL_PING_REPLY:
+         case PROTOCOL_TCP:
             if (message->dest == TOS_NODE_ID) {
                call Transport.receive(message);
-               // dbg(GENERAL_CHANNEL, "This is the Destination from: %d to %d with %d\n", message->src, message->dest, message->seq);
-               // logPack(message);
             } else {
                if (call LinkState.checkIfInRoutingTable(message->dest)) {
-                  // Execute Flooding
                   makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, message->payload, PACKET_MAX_PAYLOAD_SIZE);
                   call Sender.send(sendPackage, call LinkState.getFromRoutingTable(message->dest));
                } else {
                   call Flooding.pingHandle(message);
                }
             }
-         } else if (message->protocol == PROTOCOL_LINKED_STATE) {
+         case PROTOCOL_LINKED_STATE:
             call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
-         }
-         // else if (message->protocol == PROTOCOL_TCP) {
-         //    call Transport.receive(message);
-         // }
-         
-         return msg;
       }
-
-      dbg(GENERAL_CHANNEL, "Unknown Packet Type %u\n", len);
+         
       return msg;
    }
 

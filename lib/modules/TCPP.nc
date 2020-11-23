@@ -49,18 +49,20 @@ implementation{
         socket_addr_t socket_address;
         fd = call Transport.socket();
 
-        // Only source info
-        socket_address.addr = TOS_NODE_ID; // NODE_ID
-        socket_address.port = port; 
+        if (fd != 0) {
+            // Only source info
+            socket_address.addr = TOS_NODE_ID; // NODE_ID
+            socket_address.port = port; 
 
-        if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
-            call AcceptedSockets.pushback(fd);
-            
-            if (call Transport.listen(fd) == SUCCESS && !(call ServerTimer.isRunning())) {
-                call ServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
+            if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
+                call AcceptedSockets.pushback(fd);
+                
+                if (call Transport.listen(fd) == SUCCESS && !call ServerTimer.isRunning()) {
+                    call ServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
+                }
+
+                return;
             }
-
-            return;
         }
 
         dbg(TRANSPORT_CHANNEL, "This should never happen\n");
@@ -71,20 +73,31 @@ implementation{
         socket_addr_t server_address;
         fd = call Transport.socket();
 
-        // Only source info.
-        socket_address.addr = TOS_NODE_ID;
-        socket_address.port = sourcePort;
+        if (fd != 0) {
+            // Only source info.
+            socket_address.addr = TOS_NODE_ID;
+            socket_address.port = sourcePort;
 
-        call Transport.bind(fd, &socket_address);
+            if (call Transport.bind(fd, &socket_address) == FAIL) {
+                dbg(TRANSPORT_CHANNEL, "Failed to bind sockets. Exiting!");
+                return;
+            }
 
-        // Only dest info.
-        server_address.addr = destination;
-        server_address.port = destinationPort;
+            // Only dest info.
+            server_address.addr = destination;
+            server_address.port = destinationPort;
 
-        call Transport.connect(fd, &server_address);
-        tempData = transfer;
-        call ConnectionTimer.startPeriodic(1000);
-        printf("Establishing Connection");
+            call Transport.connect(fd, &server_address);
+            tempData = transfer;
+
+            if (!call ConnectionTimer.isRunning()) {
+                call ConnectionTimer.startPeriodic(1000);
+            }
+
+            printf("Establishing Connection");
+        }
+
+        dbg(TRANSPORT_CHANNEL, "This should never happen\n");
     }
 
     command void TCP.closeClient(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
@@ -147,7 +160,6 @@ implementation{
     event void ClientTimer.fired() {   
         uint8_t buffer[SOCKET_BUFFER_SIZE];
         uint16_t currentByte = bytesWritten;
-        uint16_t bytesToTransfer;
         uint16_t bytesTransferred;
         uint16_t i = 0;
 
