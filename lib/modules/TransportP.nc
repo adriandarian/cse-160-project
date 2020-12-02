@@ -139,18 +139,11 @@ implementation {
     }
 
     command socket_t Transport.accept(socket_t fd) {
-        socket_store_t socket;
-
-        // if (fd > 0 && fd < MAX_NUM_OF_SOCKETS - 1) {
-        //     socket = call Sockets.get(fd);
-
-        //     if (socket.state == LISTEN) {
-        //         fd = fd + 1;
-        //         // make a copy in next socket
-        //         call Sockets.insert(fd, socket);
-        //         return fd;
-        //     }
-        // }
+        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS - 1) {
+            fd = fd + 1;
+            initSocket(fd, CLOSED);
+            return fd;
+        }
 
         return NULL;
     }

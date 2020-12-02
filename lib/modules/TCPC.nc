@@ -29,6 +29,15 @@ implementation{
     components new TimerMilliC() as CloseTimerC;
     TCPP.CloseTimer->CloseTimerC;
 
+    components new TimerMilliC() as AppServerTimerC;
+    TCPP.AppServerTimer->AppServerTimerC;
+
+    components new TimerMilliC() as AppConnectionTimerC;
+    TCPP.AppConnectionTimer->AppConnectionTimerC;
+
+    components new TimerMilliC() as AppClientTimerC;
+    TCPP.AppClientTimer->AppClientTimerC;
+
     // Transport
     components TransportC;
     TCPP.Transport->TransportC;
@@ -39,6 +48,6 @@ implementation{
      * #######################################
      */
 
-    components new ListC(uint8_t, 10) as AcceptedSocketsC;
+    components new HashmapC(uint8_t *, 10) as AcceptedSocketsC;
     TCPP.AcceptedSockets->AcceptedSocketsC;
 }

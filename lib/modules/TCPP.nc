@@ -17,10 +17,13 @@ module TCPP{
     uses interface Timer<TMilli> as ConnectionTimer;
     uses interface Timer<TMilli> as ClientTimer;
     uses interface Timer<TMilli> as CloseTimer;
+    uses interface Timer<TMilli> as AppServerTimer;
+    uses interface Timer<TMilli> as AppConnectionTimer;
+    uses interface Timer<TMilli> as AppClientTimer;
     uses interface Transport;
 
     // Data Structures
-    uses interface List<uint8_t> as AcceptedSockets;
+    uses interface Hashmap<uint8_t*> as AcceptedSockets;
 }
 
 implementation{
@@ -29,6 +32,8 @@ implementation{
     uint16_t tempData;
     uint16_t time = 1;
     uint16_t bytesWritten = 1;
+    uint8_t *user;
+    uint8_t once = 1;
 
 
     /*
@@ -55,7 +60,7 @@ implementation{
             socket_address.port = port; 
 
             if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
-                call AcceptedSockets.pushback(fd);
+                call AcceptedSockets.insert(fd, "0");
                 
                 if (call Transport.listen(fd) == SUCCESS && !call ServerTimer.isRunning()) {
                     call ServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
@@ -112,6 +117,85 @@ implementation{
         dbg(TRANSPORT_CHANNEL, "Failed to close client socket\n");
     }
 
+    command void TCP.setAppServer(uint16_t address, uint8_t port) {
+        socket_addr_t socket_address;
+        fd = call Transport.socket();
+
+        if (fd != 0) {
+            // Only source info
+            socket_address.addr = TOS_NODE_ID; // NODE_ID
+            socket_address.port = port; 
+
+            if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
+                call AcceptedSockets.insert(fd, "0");
+                
+                if (call Transport.listen(fd) == SUCCESS && !call ServerTimer.isRunning()) {
+                    call AppServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
+                }
+
+                return;
+            }
+        }
+
+        dbg(TRANSPORT_CHANNEL, "This should never happen\n");
+    }
+
+    command void TCP.setAppClient(uint16_t clientAddress, uint16_t serverAddress, uint8_t clientPort, uint8_t serverPort, uint8_t *username) {
+        socket_addr_t socket_address;
+        socket_addr_t server_address;
+        fd = call Transport.socket();
+
+        if (fd != 0) {
+            // Only source info.
+            socket_address.addr = TOS_NODE_ID;
+            socket_address.port = clientPort;
+
+            if (call Transport.bind(fd, &socket_address) == FAIL) {
+                dbg(TRANSPORT_CHANNEL, "Failed to bind sockets. Exiting!");
+                return;
+            }
+
+            // Only dest info.
+            server_address.addr = serverAddress;
+            server_address.port = serverPort;
+
+            call Transport.connect(fd, &server_address);
+            user = username;
+
+            if (!call AppConnectionTimer.isRunning()) {
+                call AppConnectionTimer.startPeriodic(1000);
+            }
+
+            printf("Establishing Connection");
+            return;
+        }
+
+        dbg(TRANSPORT_CHANNEL, "This should never happen\n");
+    }
+
+    command void TCP.broadcastMessage(uint16_t address, uint8_t *message) {
+
+    }
+
+    command void TCP.unicastMessage(uint16_t address, uint8_t *username, uint8_t *message) {
+
+    }
+
+    command void TCP.printUsers(uint16_t address) {
+        uint8_t i;
+        uint8_t *username;
+
+        printf("Reply: listUsrRply ");
+        for (i = 0; i < call AcceptedSockets.size(); i++) {
+            username = call AcceptedSockets.get(i);
+
+            if (username != (uint8_t*)"0") {
+                printf("%hhu, ", username);
+            }
+        }
+        printf("\\r\\n\n");
+    }
+
     /*
      * #######################################
      *              Events
@@ -124,7 +208,7 @@ implementation{
         uint16_t buffer[SOCKET_BUFFER_SIZE];
 
         if (newFd != NULL) {
-            call AcceptedSockets.pushback(newFd);
+            call AcceptedSockets.insert(newFd, "0");
         }
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
@@ -147,7 +231,6 @@ implementation{
             dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, fd);
             call Transport.printSockets();
             data = tempData;
-            dbg(TRANSPORT_CHANNEL, "Begin write: (data = %hu)\n", data);
             call ClientTimer.startPeriodic(CLIENT_WRITE_TIMER);
             call ConnectionTimer.stop();
             return;
@@ -187,6 +270,39 @@ implementation{
     event void CloseTimer.fired() {
         call Transport.printSockets();
         return;
+    }
+
+    event void AppServerTimer.fired() {
+        socket_t newFd = call Transport.accept(fd);
+
+        if (newFd != NULL) {
+            call AcceptedSockets.insert(newFd, "0");
+        }
+
+        if (newFd == 10 && once == 1) {
+            call Transport.printSockets();
+            once = 2;
+        }        
+    }
+
+    event void AppConnectionTimer.fired() {
+        if (call Transport.hasConnected() == SUCCESS) {
+            printf("in %d seconds\n", time);
+            time = 1;
+            dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, fd);
+            call Transport.printSockets();
+            call AppClientTimer.startOneShot(CLIENT_WRITE_TIMER);
+            call AppConnectionTimer.stop();
+            return;
+        }
+
+        printf(".");
+        time = time + 1;
+    }
+
+    event void AppClientTimer.fired() {
+        call AcceptedSockets.remove(fd);
+        call AcceptedSockets.insert(fd, user);
     }
 
     /*

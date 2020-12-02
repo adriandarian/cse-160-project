@@ -81,6 +81,31 @@ implementation{
                 dbg(COMMAND_CHANNEL, "Command Type: Client Close\n");
                 signal CommandHandler.closeClient(msg->dest, buff[0], buff[1], buff[2]);
                 break;
+            
+            case CMD_APP_SERVER:
+                dbg(COMMAND_CHANNEL, "Command Type: App Server\n");
+                signal CommandHandler.setAppServer(msg->dest, buff[0]);
+                break;
+            
+            case CMD_APP_CLIENT:
+                dbg(COMMAND_CHANNEL, "Command Type: App Client\n");
+                signal CommandHandler.setAppClient(msg->dest, buff[0], buff[1], buff[2], &buff[3]);
+                break;
+
+            case CMD_APP_BROADCAST_MESSAGE:
+                dbg(COMMAND_CHANNEL, "Command Type: Broadcast Message\n");
+                signal CommandHandler.broadcastMessage(msg->dest, &buff[0]);
+                break;
+
+            case CMD_APP_UNICAST_MESSAGE:
+                dbg(COMMAND_CHANNEL, "Command Type: Whisper Message\n");
+                signal CommandHandler.unicastMessage(msg->dest, &buff[0], &buff[1]);
+                break;
+
+            case CMD_APP_PRINT_USERS:
+                dbg(COMMAND_CHANNEL, "Command Type: Print Users\n");
+                signal CommandHandler.printUsers(msg->dest);
+                break;
 
             case CMD_KILL:
             case CMD_ERROR:

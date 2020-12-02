@@ -16,6 +16,11 @@ class TestSim:
     CMD_TEST_CLIENT = 4
     CMD_TEST_SERVER = 5
     CMD_CLIENT_CLOSE = 6
+    CMD_APP_SERVER = 10
+    CMD_APP_CLIENT = 11
+    CMD_APP_BROADCAST_MESSAGE = 12
+    CMD_APP_UNICAST_MESSAGE = 13
+    CMD_APP_PRINT_USERS = 14
 
     # CHANNELS - see includes/channels.h
     COMMAND_CHANNEL = "command"
@@ -32,11 +37,16 @@ class TestSim:
     # Project 3
     TRANSPORT_CHANNEL = "transport"
 
+    # Project 4
+    APP_CHANNEL = "app"
+
     # Personal Debuggin Channels for some of the additional models implemented.
     HASHMAP_CHANNEL = "hashmap"
 
     # Initialize Vars
     numMote = 0
+    serverAddress = 0
+    serverPort = 0
 
     def __init__(self):
         self.t = Tossim([])
@@ -141,3 +151,20 @@ class TestSim:
 
     def clientClose(self, clientAddress, destination, sourcePort, destinationPort):
         self.sendCMD(self.CMD_CLIENT_CLOSE, clientAddress, "{0}{1}{2}".format(chr(destination), chr(sourcePort), chr(destinationPort)))
+
+    def appServer(self, address, port):
+        self.serverAddress = address
+        self.serverPort = port
+        self.sendCMD(self.CMD_APP_SERVER, address, "{0}".format(chr(port)))
+
+    def appClient(self, clientAddress, clientPort, username):
+        self.sendCMD(self.CMD_APP_CLIENT, clientAddress, "{0}{1}{2}{3}".format(chr(self.serverAddress), chr(clientPort), chr(self.serverPort), username))
+
+    def broadcastingMessage(self, message):
+        self.sendCMD(self.CMD_APP_BROADCAST_MESSAGE, self.serverAddress, "{0}".format(message))
+
+    def uincastMessage(self, username, message):
+        self.sendCMD(self.CMD_APP_UNICAST_MESSAGE, self.serverAddress, "{0}{1}".format(username, message))
+
+    def printUsers(self):
+        self.sendCMD(self.CMD_APP_PRINT_USERS, self.serverAddress, "listusr\r\n")

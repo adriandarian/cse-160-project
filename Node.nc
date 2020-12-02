@@ -136,7 +136,27 @@ implementation{
       call TCP.closeClient(clientAddress, destination, sourcePort, destinationPort);
    }
 
-   event void CommandHandler.setAppServer() {}
+   event void CommandHandler.setAppServer(uint16_t address, uint8_t port) {
+      dbg(APP_CHANNEL, "Server: Node %hu listening on port %hhu...\n", address, port);
+      call TCP.setAppServer(address, port);
+   }
 
-   event void CommandHandler.setAppClient() {}
+   event void CommandHandler.setAppClient(uint16_t clientAddress, uint16_t serverAddress, uint8_t clientPort, uint8_t serverPort, uint8_t *username) {
+      dbg(APP_CHANNEL, "Username: %s\n", username);
+      call TCP.setAppClient(clientAddress, serverAddress, clientPort, serverPort, username);
+   }
+
+   event void CommandHandler.broadcastMessage(uint16_t address, uint8_t *message) {
+      dbg(APP_CHANNEL, "Message: %s\n", message);
+      call TCP.broadcastMessage(address, message);
+   }
+
+   event void CommandHandler.unicastMessage(uint16_t address, uint8_t *username, uint8_t *message) {
+      dbg(APP_CHANNEL, "Username: %s, Message: %s\n", username, message);
+      call TCP.unicastMessage(address, username, message);
+   }
+
+   event void CommandHandler.printUsers(uint16_t address) {
+      call TCP.printUsers(address);
+   }
 }
