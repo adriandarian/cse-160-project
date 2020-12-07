@@ -24,7 +24,7 @@ typedef struct TCPPack{
     enum tcp_flag flag;
     uint8_t advertisement_window;
     uint8_t checksum;
-    uint16_t payload[MAX_PAYLOAD_SIZE];
+    uint8_t payload[MAX_PAYLOAD_SIZE];
 }TCPPack;
 
 void makeTCPPacket(TCPPack* TCP, uint8_t source_port, uint8_t destination_port, uint8_t sequence_number, uint8_t acknowledgement_number, uint8_t flag, uint8_t advertisement_window, uint32_t checksum, uint8_t* payload) {

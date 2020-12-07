@@ -282,7 +282,7 @@ implementation {
                     socket = call Sockets.get(i);
 
                     if (socket.state == ESTABLISHED) {
-                        // printf("rcvdBuff(%hhu)[", socket.lastRead);
+                        printf("rcvdBuff(%hhu)[", socket.lastRead);
                         for (i = 0; socket.lastRead < SOCKET_BUFFER_SIZE && getReceiveBufferAvailable(i) > 0 && curByte <= SOCKET_BUFFER_SIZE; i++) {
                             memcpy(&socket.rcvdBuff[socket.lastRead], TCPPackage->payload + curByte, 1);
                             socket.lastRead++;
@@ -293,13 +293,13 @@ implementation {
                             socket.lastRead = 0;
                         }      
 
-                        // for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                        //     printf("%hhu", socket.rcvdBuff[i]);
-                        //     if (i != SOCKET_BUFFER_SIZE - 1) {
-                        //         printf(", ");
-                        //     }
-                        // }
-                        // printf("]\n");
+                        for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                            printf("%hhu", socket.rcvdBuff[i]);
+                            if (i != SOCKET_BUFFER_SIZE - 1) {
+                                printf(", ");
+                            }
+                        }
+                        printf("]\n");
 
                         call Sockets.insert(i, socket);     
                         dbg(TRANSPORT_CHANNEL, "Data packet recieved: sending ACK...\n");

@@ -21,7 +21,7 @@ typedef nx_struct pack{
 	nx_uint16_t seq;		// Sequence Number
 	nx_uint8_t TTL;			// Time to Live
 	nx_uint8_t protocol;
-	nx_uint32_t payload[PACKET_MAX_PAYLOAD_SIZE];
+	nx_uint8_t payload[PACKET_MAX_PAYLOAD_SIZE];
 }pack;
 
 /*
@@ -34,7 +34,7 @@ void logPack(pack *input) {
 	dbg(LOG_CHANNEL, "Package [Src: %hhu, Dest: %hhu, Seq: %hhu, TTL: %hhu, Protocol: %hhu, Payload: %s]\n", input->src, input->dest, input->seq, input->TTL, input->protocol, input->payload);
 }
 
-void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint32_t* payload, uint8_t length) {
+void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
 	Package->src = src;
 	Package->dest = dest;
 	Package->TTL = TTL;
@@ -44,7 +44,7 @@ void makePack(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t
 	memcpy(Package->payload, payload, length);
 }
 
-void makePackTCP(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint32_t* payload, uint8_t length) {
+void makePackTCP(pack *Package, uint16_t src, uint16_t dest, uint16_t TTL, uint16_t protocol, uint16_t seq, uint8_t* payload, uint8_t length) {
 	uint8_t i;
 
 	Package->src = src;
