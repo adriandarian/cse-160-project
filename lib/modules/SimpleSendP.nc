@@ -8,6 +8,7 @@
 #include "../../includes/packet.h"
 #include "../../includes/sendInfo.h"
 #include "../../includes/channels.h"
+#include "../../includes/tcp.h"
 
 generic module SimpleSendP() {
     // provides shows the interface we are implementing. See lib/interface/SimpleSend.nc
@@ -30,6 +31,7 @@ implementation{
    uint16_t sequenceNum = 0;
    bool busy = FALSE;
    message_t pkt;
+   uint8_t once = 0;
 
    error_t send(uint16_t src, uint16_t dest, pack *message);
 
@@ -51,6 +53,25 @@ implementation{
        // us to allocate space in a pool where pointers can be retrieved. See
        // SimpleSendC to see where we allocate space. Be sure to put the values
        // back into the queue once you are done.
+      // TCPPack *TCPPackage =  msg.payload;
+      // uint8_t *payload = TCPPackage->payload;
+      // uint8_t i;
+
+      // if (once == 0) {
+      //    printf("size of payload: %d\n", sizeof(payload));
+      //    printf("payload[");
+      //    for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+      //       printf("%hhu", payload[i]);
+      //       if (i != SOCKET_BUFFER_SIZE - 1) {
+      //          printf(", ");
+      //       }
+      //    }
+      //    printf("]\n");
+      //    once++;
+      // }
+
+
+
       if (!call Pool.empty()) {
          sendInfo *input;
 

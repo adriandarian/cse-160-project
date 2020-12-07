@@ -159,13 +159,18 @@ implementation {
         socket_store_t socket;
         uint16_t bytesWritten = 0;
         uint16_t i;
-        uint8_t* payload = (uint8_t*)dataTCP.payload;
+        uint8_t payload[SOCKET_BUFFER_SIZE];
         uint8_t sequenceNumber;
+        TCPPack *tmp;
 
         // check if socket is valid:
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
             if (call Sockets.contains(fd)) {
                 socket = call Sockets.get(fd);
+
+                for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                    payload[i] = 0;
+                }
 
                 // if socket is valid, it has to be on an established connection:
                 if (socket.state != ESTABLISHED) {
@@ -191,26 +196,39 @@ implementation {
                     }
                     printf("]\n");
 
-                    sequenceNumber = socket.lastSent + 1;
+                    sequenceNumber = socket.lastSent;
 
                     for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                        memcpy(payload + i, &socket.sendBuff[socket.lastSent++ % SOCKET_BUFFER_SIZE], 1);
+                        // memcpy(payload + i, socket.sendBuff + i, 1);
+                        payload[i] = socket.sendBuff[socket.lastSent++];
                     }
 
                     call Sockets.insert(fd, socket);
 
                     // send pack
                     makeTCPPacket(&dataTCP, socket.dest.port, socket.src, sequenceNumber, socket.nextExpected, DATA, socket.effectiveWindow, 0, payload); // FIX SEQ AND ACK NUMS
+
+                    printf("post make tcp[");
+                    for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                        printf("%hhu", dataTCP.payload[i]);
+                        if (i != SOCKET_BUFFER_SIZE - 1) {
+                            printf(", ");
+                        }
+                    }
+                    printf("]\n");
                     
-                    makePack(&dataPackage, 
-                    TOS_NODE_ID, 
-                    socket.dest.addr, 
-                    MAX_TTL, 
-                    PROTOCOL_TCP, 
-                    0, 
-                    &dataTCP, 
-                    sizeof(dataTCP));
-                    
+                    makePackTCP(&dataPackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &dataTCP, sizeof(dataTCP));
+
+                    printf("post make pack[");
+                    tmp = dataPackage.payload;
+                    for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                        printf("%hhu", tmp->payload[i]);
+                        if (i != SOCKET_BUFFER_SIZE - 1) {
+                            printf(", ");
+                        }
+                    }
+                    printf("]\n");
+
                     call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
                     
 
@@ -233,7 +251,7 @@ implementation {
         uint16_t packageSequence = package->seq;
         uint8_t TTL = package->TTL;
         uint8_t protocol = package->protocol;
-        TCPPack *TCPPackage =  package->payload;
+        TCPPack *TCPPackage = package->payload;
         uint8_t sourcePort = TCPPackage->source_port;
         uint8_t destinationPort = TCPPackage->destination_port;
         uint32_t sequenceNumber = TCPPackage->sequence_number;
@@ -264,9 +282,9 @@ implementation {
                     socket = call Sockets.get(i);
 
                     if (socket.state == ESTABLISHED) {
-                        printf("rcvdBuff(%hhu)[", socket.lastRead);
+                        // printf("rcvdBuff(%hhu)[", socket.lastRead);
                         for (i = 0; socket.lastRead < SOCKET_BUFFER_SIZE && getReceiveBufferAvailable(i) > 0 && curByte <= SOCKET_BUFFER_SIZE; i++) {
-                            memcpy(&socket.rcvdBuff[socket.lastRead], payload + curByte, 1);
+                            memcpy(&socket.rcvdBuff[socket.lastRead], TCPPackage->payload + curByte, 1);
                             socket.lastRead++;
                             curByte++;
                         }      
@@ -275,13 +293,13 @@ implementation {
                             socket.lastRead = 0;
                         }      
 
-                        for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                            printf("%hhu", socket.rcvdBuff[i]);
-                            if (i != SOCKET_BUFFER_SIZE - 1) {
-                                printf(", ");
-                            }
-                        }
-                        printf("]\n");
+                        // for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
+                        //     printf("%hhu", socket.rcvdBuff[i]);
+                        //     if (i != SOCKET_BUFFER_SIZE - 1) {
+                        //         printf(", ");
+                        //     }
+                        // }
+                        // printf("]\n");
 
                         call Sockets.insert(i, socket);     
                         dbg(TRANSPORT_CHANNEL, "Data packet recieved: sending ACK...\n");
