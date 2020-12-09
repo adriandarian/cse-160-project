@@ -21,6 +21,7 @@ interface Transport{
    command void printSockets();
    command socket_t getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort);
    command error_t validateSocketBuffer(socket_t fd);
+   command uint8_t* getUsername(socket_t fd);
 
    /**
     * Get a socket if there is one available.
@@ -75,7 +76,7 @@ interface Transport{
     * @return uint16_t - return the amount of data you are able to write
     *    from the pass buffer. This maybe shorter then bufflen
     */
-   command uint16_t write(socket_t fd, uint8_t *buff, uint16_t bufflen);
+   command uint8_t write(socket_t fd, uint8_t *buff, uint8_t bufflen);
 
    /**
     * This will pass the packet so you can handle it internally. 
@@ -102,7 +103,7 @@ interface Transport{
     * @return uint16_t - return the amount of data you are able to read
     *    from the pass buffer. This may be shorter then bufflen
     */
-   command uint16_t read(socket_t fd, uint8_t *buff, uint16_t bufflen);
+   command uint8_t read(socket_t fd, uint8_t *buff, uint8_t bufflen);
 
    /**
     * Attempts a connection to an address.
@@ -117,6 +118,7 @@ interface Transport{
     *    a connection with the fd passed, else return FAIL.
     */
    command error_t connect(socket_t fd, socket_addr_t *addr);
+   command error_t appConnect(socket_t fd, socket_addr_t* addr, uint8_t *username);
 
    /**
     * Closes the socket.

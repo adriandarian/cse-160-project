@@ -25,14 +25,14 @@ def main():
 
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(300)
-    s.appServer(1, 41) # @params address, port 
+    s.appServer(1, 80) # @params address, port 
     s.runTime(60)
     
-    s.appClient(2, 81, "bbridi") # @params clientAddress, destination, srcPort, destPort, transfer 
+    s.appClient(2, 80, "bbridi") # @params clientAddress, destination, srcPort, destPort, transfer 
     s.runTime(1)
     s.runTime(1000)
 
-    s.appClient(3, 81, "acerpa") # @params clientAddress, destination, srcPort, destPort, transfer 
+    s.appClient(3, 80, "acerpa") # @params clientAddress, destination, srcPort, destPort, transfer 
     s.runTime(1)
     s.runTime(1000)
 
@@ -40,11 +40,11 @@ def main():
     s.runTime(1)
     s.runTime(1000)
 
-    s.clientClose(2, 1, 81, 41) # @params clientAddress, destination, srcPort, destPort
+    s.clientClose(2, 1, 80, 80) # @params clientAddress, destination, srcPort, destPort
     s.runTime(1)
     s.runTime(1000)
 
-    s.clientClose(3, 1, 81, 41) # @params clientAddress, destination, srcPort, destPort
+    s.clientClose(3, 1, 80, 80) # @params clientAddress, destination, srcPort, destPort
     s.runTime(1)
     s.runTime(1000)
 

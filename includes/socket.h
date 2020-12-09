@@ -36,7 +36,8 @@ typedef struct socket_store_t{
     enum socket_state state;
     socket_port_t src; // source port
     socket_addr_t dest; // destination to which the socket is connecting/established to [IP]
-
+    uint8_t *username;
+    
     // This is the sender portion.
     uint8_t sendBuff[SOCKET_BUFFER_SIZE];
     uint8_t lastWritten;

@@ -28,6 +28,8 @@ implementation {
     pack handshakePackage;
     TCPPack handshakeTCP;
     error_t clientConnected = FAIL;
+    socket_t globalFD;
+    uint8_t globalServerSourcePort;
 
     /*
      * #######################################
@@ -36,14 +38,14 @@ implementation {
      */
 
     void initSocket(uint8_t fd, uint8_t state);
-    uint16_t calcReceiverBuffer(uint8_t fd);
-    uint16_t calcSenderBuffer(uint8_t fd);
+    uint8_t calcReceiverBuffer(uint8_t fd);
+    uint8_t calcSenderBuffer(uint8_t fd);
     uint8_t calcAdvertisementWindow(uint8_t fd);
     uint8_t calcEffectiveWindow(uint8_t fd);
-    uint16_t getSendBufferOccupied(uint8_t fd);
-    uint16_t getReceiveBufferOccupied(uint8_t fd);
-    uint16_t getSendBufferAvailable(uint8_t fd);
-    uint16_t getReceiveBufferAvailable(uint8_t fd);
+    uint8_t getSendBufferOccupied(uint8_t fd);
+    uint8_t getReceiveBufferOccupied(uint8_t fd);
+    uint8_t getSendBufferAvailable(uint8_t fd);
+    uint8_t getReceiveBufferAvailable(uint8_t fd);
     error_t checkForEstablishedSocket();
 
     /*
@@ -63,12 +65,12 @@ implementation {
 
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
-            printf("Socket[%hu]: {\n\tflag: %hhu\n\tstate: %d\n\tsrc: %hhu\n\tdest: {\n\t\taddr: %hu\n\t\tport: %hhu\n\t}\n}\n", fd, socket.flag, socket.state, socket.src, socket.dest.addr, socket.dest.port);
+            printf("Socket[%hhu]: {\n\tflag: %hhu\n\tstate: %hhu\n\tsrc: %hhu\n\tusername: %s\n\tdest: {\n\t\taddr: %hu\n\t\tport: %hhu\n\t}\n}\n", fd, socket.flag, socket.state, socket.src, socket.username, socket.dest.addr, socket.dest.port);
         }
     }
 
     command void Transport.printSockets() {
-        uint16_t i;
+        uint8_t i;
         dbg(TRANSPORT_CHANNEL, "\n");
         for (i = 1; i <= call Sockets.size(); i++) {
             call Transport.printSocket(i);
@@ -76,7 +78,7 @@ implementation {
     }
 
     command socket_t Transport.getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
-        uint16_t i;
+        uint8_t i;
         socket_store_t socket;
 
         for (i = 1; i <= call Sockets.size(); i++) {
@@ -96,21 +98,29 @@ implementation {
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
 
-            if (socket.state != ESTABLISHED) {
-                return FAIL;
-            } else {
-                if (getSendBufferAvailable(fd) == SOCKET_BUFFER_SIZE - 1 || getSendBufferOccupied(fd) == 0) {
-                    return SUCCESS;
-                }
+            if (socket.state == ESTABLISHED && (getSendBufferAvailable(fd) == SOCKET_BUFFER_SIZE - 1 || getSendBufferOccupied(fd) == 0)) {
+                return SUCCESS;
             }
         }
 
         return FAIL;
     }
 
+    command uint8_t* Transport.getUsername(socket_t fd) {
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+
+            if (socket.state == ESTABLISHED) {
+                return socket.username;
+            }
+        }
+    }
+
     command socket_t Transport.socket() {
         socket_t fd = 0;
-        uint16_t SocketsSize = call Sockets.size();
+        uint8_t SocketsSize = call Sockets.size();
 
         if (SocketsSize < MAX_NUM_OF_SOCKETS) {
             fd = SocketsSize + 1;
@@ -127,6 +137,7 @@ implementation {
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
             socket.src = addr->port;
+            globalServerSourcePort = addr->port;
 
             call Sockets.insert(fd, socket);
 
@@ -139,19 +150,20 @@ implementation {
     }
 
     command socket_t Transport.accept(socket_t fd) {
-        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS - 1) {
+        if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
             fd = fd + 1;
-            initSocket(fd, CLOSED);
+            initSocket(fd, LISTEN);
+
             return fd;
         }
 
         return NULL;
     }
 
-    command uint16_t Transport.write(socket_t fd, uint8_t* buff, uint16_t bufflen) {
+    command uint8_t Transport.write(socket_t fd, uint8_t* buff, uint8_t bufflen) {
         socket_store_t socket;
-        uint16_t bytesWritten = 0;
-        uint16_t i;
+        uint8_t bytesWritten = 0;
+        uint8_t i;
         uint8_t* payload = (uint8_t*)dataTCP.payload;
         uint8_t sequenceNumber;
 
@@ -195,14 +207,7 @@ implementation {
                     // send pack
                     makeTCPPacket(&dataTCP, socket.dest.port, socket.src, sequenceNumber, socket.nextExpected, DATA, socket.effectiveWindow, 0, payload); // FIX SEQ AND ACK NUMS
                     
-                    makePack(&dataPackage, 
-                    TOS_NODE_ID, 
-                    socket.dest.addr, 
-                    MAX_TTL, 
-                    PROTOCOL_TCP, 
-                    0, 
-                    &dataTCP, 
-                    sizeof(dataTCP));
+                    makePack(&dataPackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &dataTCP, sizeof(dataTCP));
                     
                     call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
                     
@@ -229,30 +234,21 @@ implementation {
         TCPPack *TCPPackage =  package->payload;
         uint8_t sourcePort = TCPPackage->source_port;
         uint8_t destinationPort = TCPPackage->destination_port;
-        uint32_t sequenceNumber = TCPPackage->sequence_number;
-        uint32_t acknowledgementNumber = TCPPackage->acknowledgement_number;
+        uint8_t sequenceNumber = TCPPackage->sequence_number;
+        uint8_t acknowledgementNumber = TCPPackage->acknowledgement_number;
         uint8_t flag = TCPPackage->flag;
-        uint16_t advertisementWindow = TCPPackage->advertisement_window;
-        uint32_t checksum = TCPPackage->checksum;
+        uint8_t advertisementWindow = TCPPackage->advertisement_window;
+        uint8_t checksum = TCPPackage->checksum;
         uint8_t *payload = TCPPackage->payload;
-        uint16_t i;
+        uint8_t i;
         socket_store_t socket;
-        uint32_t ackNum = sequenceNumber + 1;
-        uint32_t seqNum = call Random.rand16() % 1000;
-        uint16_t curByte = 0;
+        uint8_t ackNum = sequenceNumber + 1;
+        uint8_t seqNum = call Random.rand16() % 1000;
+        uint8_t curByte = 0;
         uint8_t recieverBuffer;
         
         switch (flag) {
             case (DATA):
-                // printf("size of payload: %d\n", sizeof(payload));
-                // printf("payload[");
-                // for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
-                //     printf("%hhu", payload[i]);
-                //     if (i != SOCKET_BUFFER_SIZE - 1) {
-                //         printf(", ");
-                //     }
-                // }
-                // printf("]\n");
                 for (i = 1; i <= call Sockets.size(); i++) {
                     socket = call Sockets.get(i);
 
@@ -296,15 +292,17 @@ implementation {
                     if (socket.state == LISTEN) {
                         socket.flag = SYN_ACK;
                         socket.state = SYN_RCVD;
+                        socket.dest.addr = packageSource;
+                        socket.dest.port = sourcePort;
+                        socket.username = payload;
 
                         call Sockets.insert(i, socket);
 
                         break;
                     }
-                    
                 }
 
-                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYN_ACK, advertisementWindow, 0, &payload);
+                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, SYN_ACK, advertisementWindow, 9, payload);
 
                 makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
@@ -325,7 +323,7 @@ implementation {
                     }
                 }
 
-                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum + 1, ackNum + 1, ACK, advertisementWindow, 0, &payload);
+                makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum + 1, ackNum + 1, ACK, advertisementWindow, 9, payload);
 
                 makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
@@ -343,14 +341,14 @@ implementation {
                         call Sockets.insert(i, socket);
 
                         break;
-                    }
-
-                    if (socket.state == ESTABLISHED) {
-                        dbg(TRANSPORT_CHANNEL, "ACK recieved, stopping timer, incremeting sequence num...\n");
+                    } else if (socket.state == ESTABLISHED) {
+                        // dbg(TRANSPORT_CHANNEL, "ACK recieved, stopping timer, incremeting sequence num...\n");
                         seqNum++;
                         call StopAndWaitTimer.stop();
                     }
                 }
+
+                // call Transport.printSockets();
 
                 return SUCCESS;
             case (FIN):
@@ -390,10 +388,10 @@ implementation {
         return FAIL;
     }
 
-    command uint16_t Transport.read(socket_t fd, uint8_t* buff, uint16_t bufflen) {
+    command uint8_t Transport.read(socket_t fd, uint8_t* buff, uint8_t bufflen) {
         socket_store_t socket;
-        uint16_t bytesRead = 0;
-        uint16_t i;
+        uint8_t bytesRead = 0;
+        uint8_t i;
         bool hasData = FALSE;
         
         // check if socket is valid:
@@ -410,10 +408,8 @@ implementation {
                     for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
                         if (socket.rcvdBuff[i] != 0) {
 
-                        }
-                       
+                        }  
                     }
-                  
                     
                     // return bytes
                     return bytesRead;
@@ -426,11 +422,11 @@ implementation {
 
     command error_t Transport.connect(socket_t fd, socket_addr_t* addr) {
         socket_store_t socket;
-        uint32_t sequenceNum = call Random.rand16() % 1000;
-        uint32_t ackNum = 0;
+        uint8_t sequenceNum = call Random.rand16() % 1000;
+        uint8_t ackNum = 0;
         uint8_t flag = SYN;
-        uint16_t advertisement_window = 1; // for stop and wait
-        uint32_t checksum = 0;
+        uint8_t advertisement_window = 1; // for stop and wait
+        uint8_t checksum = 0;
         uint8_t buffer[SOCKET_BUFFER_SIZE];
 
         if (call Sockets.contains(fd)) {
@@ -443,12 +439,46 @@ implementation {
 
                 call Sockets.insert(fd, socket);
                 
-                makeTCPPacket(&handshakeTCP, socket.dest.port, addr->port, sequenceNum, ackNum, flag, advertisement_window, checksum, buffer);
+                makeTCPPacket(&handshakeTCP, socket.src, addr->port, sequenceNum, ackNum, flag, advertisement_window, checksum, buffer);
 
                 makePack(&handshakePackage, TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
 
                 if (call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr)) == SUCCESS) {
                     call HandshakeTimer.startPeriodic(20000);
+                    globalFD = fd;
+                }
+            }
+        }
+
+        return FAIL;
+    }
+
+    command error_t Transport.appConnect(socket_t fd, socket_addr_t* addr, uint8_t *username) {
+        socket_store_t socket;
+        uint8_t sequenceNum = call Random.rand16() % 1000;
+        uint8_t ackNum = 0;
+        uint8_t flag = SYN;
+        uint8_t advertisement_window = 1; // for stop and wait
+        uint8_t checksum = 0;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+
+            if (socket.state == CLOSED) {
+                socket.dest = *addr;
+                socket.flag = SYN;
+                socket.state = SYN_SENT;
+                socket.username = username;
+
+                call Sockets.insert(fd, socket);
+                
+                makeTCPPacket(&handshakeTCP, socket.src, addr->port, sequenceNum, ackNum, flag, advertisement_window, checksum, username);
+
+                makePack(&handshakePackage, TOS_NODE_ID, addr->addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+
+                if (call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(addr->addr)) == SUCCESS) {
+                    call HandshakeTimer.startPeriodic(20000);
+                    globalFD = fd;
                 }
             }
         }
@@ -531,7 +561,7 @@ implementation {
     event void StopAndWaitTimer.fired() {
         // retransmit
         call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(dataPackage.dest));
-
+        call StopAndWaitTimer.startOneShot(ATTEMPT_CONNECTION_TIME);
     }
 
     /*
@@ -542,14 +572,15 @@ implementation {
 
     void initSocket(uint8_t fd, uint8_t state) {
         socket_store_t socket = call Sockets.get(fd);
-        uint16_t i;
-        uint16_t pos;
+        uint8_t i;
+        uint8_t pos;
 
         socket.flag = DATA;
         socket.state = state;
-        socket.src = 0;
+        socket.src = globalServerSourcePort;
         socket.dest.addr = ROOT_SOCKET_ADDR;
         socket.dest.port = ROOT_SOCKET_PORT;
+        socket.username = "0";
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             socket.sendBuff[i] = 0;
@@ -572,9 +603,9 @@ implementation {
         call Sockets.insert(fd, socket);
     }
 
-    uint16_t calcReceiverBuffer(uint8_t fd) {
-        uint16_t lastRead;
-        uint16_t nextExpected;
+    uint8_t calcReceiverBuffer(uint8_t fd) {
+        uint8_t lastRead;
+        uint8_t nextExpected;
         socket_store_t socket;
 
         if (call Sockets.contains(fd)) {
@@ -591,9 +622,9 @@ implementation {
         }
     }
 
-    uint16_t calcSenderBuffer(uint8_t fd) {
-        uint16_t lastAck;
-        uint16_t lastSent;
+    uint8_t calcSenderBuffer(uint8_t fd) {
+        uint8_t lastAck;
+        uint8_t lastSent;
         socket_store_t socket;
 
         if (call Sockets.contains(fd)) {
@@ -624,7 +655,7 @@ implementation {
         }
     }
 
-    uint16_t getSendBufferOccupied(uint8_t fd) {
+    uint8_t getSendBufferOccupied(uint8_t fd) {
         socket_store_t socket;
 
         if (call Sockets.contains(fd)) {
@@ -642,7 +673,7 @@ implementation {
         return -1;
     }
 
-    uint16_t getReceiveBufferOccupied(uint8_t fd) {
+    uint8_t getReceiveBufferOccupied(uint8_t fd) {
         socket_store_t socket;
 
         if (call Sockets.contains(fd)) {
@@ -660,7 +691,7 @@ implementation {
         return -1;
     }
 
-    uint16_t getSendBufferAvailable(uint8_t fd) {
+    uint8_t getSendBufferAvailable(uint8_t fd) {
         socket_store_t socket;
 
         if (call Sockets.contains(fd)) {
@@ -678,7 +709,7 @@ implementation {
         return -1;
     }
 
-    uint16_t getReceiveBufferAvailable(uint8_t fd) {
+    uint8_t getReceiveBufferAvailable(uint8_t fd) {
         socket_store_t socket;
 
         if (call Sockets.contains(fd)) {
@@ -697,11 +728,10 @@ implementation {
     }
 
     error_t checkForEstablishedSocket() {
-        uint16_t i;
         socket_store_t socket;
 
-        for (i = 1; i <= call Sockets.size(); i++) {
-            socket = call Sockets.get(i);
+        if (call Sockets.contains(globalFD)) {
+            socket = call Sockets.get(globalFD);
 
             if (socket.state == ESTABLISHED) {
                 clientConnected = SUCCESS;

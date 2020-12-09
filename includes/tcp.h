@@ -23,11 +23,11 @@ typedef struct TCPPack{
     uint8_t acknowledgement_number;
     enum tcp_flag flag;
     uint8_t advertisement_window;
-    uint32_t checksum;
-    uint16_t payload[MAX_PAYLOAD_SIZE];
+    uint8_t checksum;
+    uint8_t payload[MAX_PAYLOAD_SIZE];
 }TCPPack;
 
-void makeTCPPacket(TCPPack* TCP, uint8_t source_port, uint8_t destination_port, uint8_t sequence_number, uint8_t acknowledgement_number, uint8_t flag, uint8_t advertisement_window, uint32_t checksum, uint8_t* payload) {
+void makeTCPPacket(TCPPack* TCP, uint8_t source_port, uint8_t destination_port, uint8_t sequence_number, uint8_t acknowledgement_number, uint8_t flag, uint8_t advertisement_window, uint8_t checksum, uint8_t* payload) {
     TCP->source_port = source_port;
     TCP->destination_port = destination_port;
     TCP->sequence_number = sequence_number;
@@ -35,7 +35,6 @@ void makeTCPPacket(TCPPack* TCP, uint8_t source_port, uint8_t destination_port, 
     TCP->flag = flag;
     TCP->advertisement_window = advertisement_window;
     TCP->checksum = checksum;
-    // TCP->payload = payload;
 
     memcpy(TCP->payload, payload, MAX_PAYLOAD_SIZE);
 }

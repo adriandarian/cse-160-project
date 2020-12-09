@@ -33,7 +33,6 @@ implementation{
     uint16_t time = 1;
     uint16_t bytesWritten = 1;
     uint8_t *user;
-    uint8_t once = 1;
 
 
     /*
@@ -100,6 +99,7 @@ implementation{
             }
 
             printf("Establishing Connection");
+            return;
         }
 
         dbg(TRANSPORT_CHANNEL, "This should never happen\n");
@@ -159,7 +159,7 @@ implementation{
             server_address.addr = serverAddress;
             server_address.port = serverPort;
 
-            call Transport.connect(fd, &server_address);
+            call Transport.appConnect(fd, &server_address, username);
             user = username;
 
             if (!call AppConnectionTimer.isRunning()) {
@@ -174,26 +174,30 @@ implementation{
     }
 
     command void TCP.broadcastMessage(uint16_t address, uint8_t *message) {
-
+        // get a sub list of all sockets with flag 3 and state 2 on server
+        // send message to each node with the defined port and address
     }
 
     command void TCP.unicastMessage(uint16_t address, uint8_t *username, uint8_t *message) {
-
+        // check if the user has an established socket to the server
+        //      this is by flag = 3 state = 2 and username = username
+        // send message to the given user
     }
 
     command void TCP.printUsers(uint16_t address) {
         uint8_t i;
         uint8_t *username;
+        call Transport.printSockets();
 
-        printf("Reply: listUsrRply ");
-        for (i = 0; i < call AcceptedSockets.size(); i++) {
-            username = call AcceptedSockets.get(i);
+        // printf("Reply: listUsrRply [%d]", call AcceptedSockets.size());
+        // for (i = 1; i <= call AcceptedSockets.size(); i++) {
+        //     username = call AcceptedSockets.get(i);
 
-            if (username != (uint8_t*)"0") {
-                printf("%hhu, ", username);
-            }
-        }
-        printf("\\r\\n\n");
+        //     if (username != (uint8_t*)"0") {
+        //         printf("%s, ", username);
+        //     }
+        // }
+        // printf("\\r\\n\n");
     }
 
     /*
@@ -268,21 +272,27 @@ implementation{
     }
 
     event void CloseTimer.fired() {
-        call Transport.printSockets();
         return;
     }
 
     event void AppServerTimer.fired() {
-        socket_t newFd = call Transport.accept(fd);
+        socket_t newFd = 0;
+        uint8_t *username = "0";
+        uint8_t i = 0;
 
-        if (newFd != NULL) {
-            call AcceptedSockets.insert(newFd, "0");
+        if (call AcceptedSockets.size() <= MAX_NUM_OF_SOCKETS) {
+            newFd = call Transport.accept(fd);
+
+            if (newFd != NULL) {
+                call AcceptedSockets.insert(newFd, "0");
+                fd = newFd;
+            }   
+        } else {
+            for (i; i < MAX_NUM_OF_SOCKETS; i++) {
+                username = call Transport.getUsername(i);
+                call AcceptedSockets.insert(i, username);
+            }
         }
-
-        if (newFd == 10 && once == 1) {
-            call Transport.printSockets();
-            once = 2;
-        }        
     }
 
     event void AppConnectionTimer.fired() {
@@ -290,7 +300,7 @@ implementation{
             printf("in %d seconds\n", time);
             time = 1;
             dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, fd);
-            call Transport.printSockets();
+            // call Transport.printSockets();
             call AppClientTimer.startOneShot(CLIENT_WRITE_TIMER);
             call AppConnectionTimer.stop();
             return;
