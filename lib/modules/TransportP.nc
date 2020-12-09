@@ -65,7 +65,7 @@ implementation {
 
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
-            printf("Socket[%hhu]: {\n\tflag: %hhu\n\tstate: %hhu\n\tsrc: %hhu\n\tusername: %s\n\tdest: {\n\t\taddr: %hu\n\t\tport: %hhu\n\t}\n}\n", fd, socket.flag, socket.state, socket.src, socket.username, socket.dest.addr, socket.dest.port);
+            printf("Socket[%hhu]: {\n\tflag: %hhu\n\tstate: %hhu\n\tsrc: %hhu\n\tdest: {\n\t\taddr: %hu\n\t\tport: %hhu\n\t}\n}\n", fd, socket.flag, socket.state, socket.src, socket.dest.addr, socket.dest.port);
         }
     }
 
@@ -104,18 +104,6 @@ implementation {
         }
 
         return FAIL;
-    }
-
-    command uint8_t* Transport.getUsername(socket_t fd) {
-        socket_store_t socket;
-
-        if (call Sockets.contains(fd)) {
-            socket = call Sockets.get(fd);
-
-            if (socket.state == ESTABLISHED) {
-                return socket.username;
-            }
-        }
     }
 
     command socket_t Transport.socket() {
@@ -231,7 +219,7 @@ implementation {
         uint16_t packageSequence = package->seq;
         uint8_t TTL = package->TTL;
         uint8_t protocol = package->protocol;
-        TCPPack *TCPPackage =  package->payload;
+        TCPPack *TCPPackage = package->payload;
         uint8_t sourcePort = TCPPackage->source_port;
         uint8_t destinationPort = TCPPackage->destination_port;
         uint8_t sequenceNumber = TCPPackage->sequence_number;
@@ -294,7 +282,6 @@ implementation {
                         socket.state = SYN_RCVD;
                         socket.dest.addr = packageSource;
                         socket.dest.port = sourcePort;
-                        socket.username = payload;
 
                         call Sockets.insert(i, socket);
 
@@ -347,8 +334,6 @@ implementation {
                         call StopAndWaitTimer.stop();
                     }
                 }
-
-                // call Transport.printSockets();
 
                 return SUCCESS;
             case (FIN):
@@ -468,7 +453,6 @@ implementation {
                 socket.dest = *addr;
                 socket.flag = SYN;
                 socket.state = SYN_SENT;
-                socket.username = username;
 
                 call Sockets.insert(fd, socket);
                 
@@ -580,7 +564,6 @@ implementation {
         socket.src = globalServerSourcePort;
         socket.dest.addr = ROOT_SOCKET_ADDR;
         socket.dest.port = ROOT_SOCKET_PORT;
-        socket.username = "0";
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             socket.sendBuff[i] = 0;

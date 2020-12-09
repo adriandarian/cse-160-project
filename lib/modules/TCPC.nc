@@ -42,6 +42,12 @@ implementation{
     components TransportC;
     TCPP.Transport->TransportC;
 
+    components LinkStateC;
+    TCPP.LinkState->LinkStateC;
+
+    components new SimpleSendC(AM_PACK) as NameSenderC;
+    TCPP.NameSender->NameSenderC;
+
     /*
      * #######################################
      *              Data Structures

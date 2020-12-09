@@ -21,6 +21,8 @@ module TCPP{
     uses interface Timer<TMilli> as AppConnectionTimer;
     uses interface Timer<TMilli> as AppClientTimer;
     uses interface Transport;
+    uses interface LinkState;
+    uses interface SimpleSend as NameSender;
 
     // Data Structures
     uses interface Hashmap<uint8_t*> as AcceptedSockets;
@@ -33,6 +35,8 @@ implementation{
     uint16_t time = 1;
     uint16_t bytesWritten = 1;
     uint8_t *user;
+    pack package;
+    uint16_t serverDestination;
 
 
     /*
@@ -161,6 +165,7 @@ implementation{
 
             call Transport.appConnect(fd, &server_address, username);
             user = username;
+            serverDestination = serverAddress;
 
             if (!call AppConnectionTimer.isRunning()) {
                 call AppConnectionTimer.startPeriodic(1000);
@@ -176,28 +181,70 @@ implementation{
     command void TCP.broadcastMessage(uint16_t address, uint8_t *message) {
         // get a sub list of all sockets with flag 3 and state 2 on server
         // send message to each node with the defined port and address
+        uint8_t i;
+        uint8_t *username;
+
+        for (i = 0; i < call AcceptedSockets.size(); i++) {
+            username = call AcceptedSockets.get(i);
+
+            if (username != (uint8_t*)"0") {
+                // broadcast
+                // makePack(&package, TOS_NODE_ID, serverDestination, MAX_TTL, PROTOCOL_APP, 0, message, PACKET_MAX_PAYLOAD_SIZE);
+                // dbg(APP_CHANNEL, "post make pack %s\n", package.payload);
+                // call NameSender.send(package, call LinkState.getFromRoutingTable(serverDestination));
+            }
+        }
     }
 
     command void TCP.unicastMessage(uint16_t address, uint8_t *username, uint8_t *message) {
         // check if the user has an established socket to the server
         //      this is by flag = 3 state = 2 and username = username
         // send message to the given user
+        uint8_t i;
+        uint8_t *name;
+
+        for (i = 0; i < call AcceptedSockets.size(); i++) {
+            name = call AcceptedSockets.get(i);
+
+            if (name == username) {
+                // broadcast
+                // makePack(&package, TOS_NODE_ID, serverDestination, MAX_TTL, PROTOCOL_APP, 0, message, PACKET_MAX_PAYLOAD_SIZE);
+                // dbg(APP_CHANNEL, "post make pack %s\n", package.payload);
+                // call NameSender.send(package, call LinkState.getFromRoutingTable(serverDestination));
+                break;
+            }
+        }
     }
 
-    command void TCP.printUsers(uint16_t address) {
+    command void TCP.printUsers() {
         uint8_t i;
         uint8_t *username;
-        call Transport.printSockets();
 
-        // printf("Reply: listUsrRply [%d]", call AcceptedSockets.size());
-        // for (i = 1; i <= call AcceptedSockets.size(); i++) {
-        //     username = call AcceptedSockets.get(i);
+        printf("Reply: listUsrRply ");
+        for (i = 0; i < call AcceptedSockets.size(); i++) {
+            username = call AcceptedSockets.get(i);
 
-        //     if (username != (uint8_t*)"0") {
-        //         printf("%s, ", username);
-        //     }
-        // }
-        // printf("\\r\\n\n");
+            if (username != (uint8_t*)"0") {
+                printf("%s, ", username);
+            }
+        }
+        printf("\\r\\n\n");
+    }
+
+    command error_t TCP.receive(pack* p) {
+        uint8_t i;
+        uint8_t* name;
+        
+        for (i = 0; i < call AcceptedSockets.size(); i++) {
+            name = call AcceptedSockets.get(i);
+
+            if (name == (uint8_t*)"0") {
+                call AcceptedSockets.remove(i);
+                call AcceptedSockets.insert(i, (uint8_t*)p->payload);
+                dbg(APP_CHANNEL, "Updated Socket[%hhu] with %s\n", i, call AcceptedSockets.get(i));
+                break;
+            }
+        }
     }
 
     /*
@@ -277,22 +324,15 @@ implementation{
 
     event void AppServerTimer.fired() {
         socket_t newFd = 0;
-        uint8_t *username = "0";
-        uint8_t i = 0;
 
-        if (call AcceptedSockets.size() <= MAX_NUM_OF_SOCKETS) {
+        if (fd < MAX_NUM_OF_SOCKETS) {
             newFd = call Transport.accept(fd);
 
             if (newFd != NULL) {
                 call AcceptedSockets.insert(newFd, "0");
                 fd = newFd;
             }   
-        } else {
-            for (i; i < MAX_NUM_OF_SOCKETS; i++) {
-                username = call Transport.getUsername(i);
-                call AcceptedSockets.insert(i, username);
-            }
-        }
+        } 
     }
 
     event void AppConnectionTimer.fired() {
@@ -300,9 +340,9 @@ implementation{
             printf("in %d seconds\n", time);
             time = 1;
             dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, fd);
-            // call Transport.printSockets();
             call AppClientTimer.startOneShot(CLIENT_WRITE_TIMER);
             call AppConnectionTimer.stop();
+
             return;
         }
 
@@ -311,8 +351,10 @@ implementation{
     }
 
     event void AppClientTimer.fired() {
-        call AcceptedSockets.remove(fd);
         call AcceptedSockets.insert(fd, user);
+        makePack(&package, TOS_NODE_ID, serverDestination, MAX_TTL, PROTOCOL_APP, 0, user, PACKET_MAX_PAYLOAD_SIZE);
+        dbg(APP_CHANNEL, "post make pack %s\n", package.payload);
+        call NameSender.send(package, call LinkState.getFromRoutingTable(serverDestination));
     }
 
     /*

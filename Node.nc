@@ -68,12 +68,13 @@ implementation{
 
       switch (message->protocol) {
          case PROTOCOL_NEIGHBOR_PING:
-         case PROTOCOL_NEIGHBOR_PING_REPLY:
+         case PROTOCOL_NEIGHBOR_PING_REPLY: {
             call NeighborDiscovery.pingHandle(message);
             break;
+         }
          case PROTOCOL_PING:
          case PROTOCOL_PING_REPLY:
-         case PROTOCOL_TCP:
+         case PROTOCOL_TCP: {
             if (message->dest == TOS_NODE_ID) {
                call Transport.receive(message);
             } else {
@@ -84,9 +85,22 @@ implementation{
                   call Flooding.pingHandle(message);
                }
             }
-         case PROTOCOL_LINKED_STATE:
+         }
+         case PROTOCOL_APP: {
+            dbg(APP_CHANNEL, "in global receiver %s\n", message->payload);
+            if (message->dest == TOS_NODE_ID) {
+               call TCP.receive(message);
+            } else {
+               if (call LinkState.checkIfInRoutingTable(message->dest)) {
+                  makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, message->payload, PACKET_MAX_PAYLOAD_SIZE);
+                  call Sender.send(sendPackage, call LinkState.getFromRoutingTable(message->dest));
+               }
+            }
+         }
+         case PROTOCOL_LINKED_STATE: {
             call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
+         }
       }
          
       return msg;
@@ -157,6 +171,7 @@ implementation{
    }
 
    event void CommandHandler.printUsers(uint16_t address) {
-      call TCP.printUsers(address);
+      dbg(APP_CHANNEL, "Printing all users on node: %hu\n", address);
+      call TCP.printUsers();
    }
 }
