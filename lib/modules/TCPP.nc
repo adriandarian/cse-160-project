@@ -24,6 +24,7 @@ module TCPP{
 
     // Data Structures
     uses interface Hashmap<char*> as AcceptedSockets;
+    uses interface List<char*> as Usernames;
 }
 
 implementation{
@@ -192,12 +193,15 @@ implementation{
         // call Transport.printSockets();
 
         printf("Reply: listUsrRply ");
-        for (i = 1; i <= call AcceptedSockets.size(); i++) {
-            memcpy(username, call AcceptedSockets.get(i), sizeof(call AcceptedSockets.get(i)));
+        for (i = 1; i <= MAX_NUM_OF_SOCKETS; i++) {
+            // memcpy(username, call Usernames.front(), sizeof(call Usernames.front()));
+            memcpy(username, call Transport.getUsername(i), sizeof(call Transport.getUsername(i)));
+            // call Usernames.popfront();
 
-            if (username != '0') {
+            // if (username != '0') {
                 printf("%s, ", username);
-            }
+            // }
+            // call Usernames.pushback(username);
         }
         printf("\\r\\n\n");
     }
@@ -290,10 +294,13 @@ implementation{
                 fd = newFd;
             }   
         } else {
+            call Usernames.empty();
             for (i = 1; i <= MAX_NUM_OF_SOCKETS; i++) {
                 memcpy(username, call Transport.getUsername(i), sizeof(call Transport.getUsername(i)));
                 call AcceptedSockets.insert(i, username);
+                call Usernames.pushback(username);
             }
+            // call TCP.printUsers();
         }
     }
 
