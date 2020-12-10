@@ -8,7 +8,7 @@ def main():
     s.runTime(1)
 
     # Load the the layout of the network.
-    s.loadTopo("simple.topo")
+    s.loadTopo("short_line.topo")
 
     # Add a noise model to all of the motes.
     s.loadNoise("no_noise.txt")
@@ -32,9 +32,9 @@ def main():
     s.runTime(1)
     s.runTime(1000)
 
-    # s.appClient(3, 80, "acerpa") # @params clientAddress, destination, srcPort, destPort, transfer 
-    # s.runTime(1)
-    # s.runTime(1000)
+    s.appClient(3, 80, "acerpa") # @params clientAddress, destination, srcPort, destPort, transfer 
+    s.runTime(1)
+    s.runTime(1000)
 
     s.printUsers()
     s.runTime(1)
@@ -44,9 +44,9 @@ def main():
     s.runTime(1)
     s.runTime(1000)
 
-    # s.clientClose(3, 1, 80, 80) # @params clientAddress, destination, srcPort, destPort
-    # s.runTime(1)
-    # s.runTime(1000)
+    s.clientClose(3, 1, 80, 80) # @params clientAddress, destination, srcPort, destPort
+    s.runTime(1)
+    s.runTime(1000)
 
 
 
