@@ -12,5 +12,5 @@ interface TCP{
     command void setAppClient(uint16_t clientAddress, uint16_t serverAddress, uint8_t clientPort, uint8_t serverPort, uint8_t *username);
     command void broadcastMessage(uint16_t address, uint8_t *message);
     command void unicastMessage(uint16_t address, uint8_t *username, uint8_t *message);
-    command void printUsers(uint16_t address);
+    command void printUsers();
 }

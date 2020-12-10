@@ -58,6 +58,7 @@ implementation{
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {      
       pack* message = (pack*) payload;
+      TCPPack *tmp = message->payload;
 
       if (len != sizeof(pack)) {
          dbg(GENERAL_CHANNEL, "Unknown Packet Type %u\n", len);
@@ -84,9 +85,13 @@ implementation{
                   call Flooding.pingHandle(message);
                }
             }
+            break;
          case PROTOCOL_LINKED_STATE:
             call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
+            break;
+         default:
+            break;
       }
          
       return msg;
@@ -157,6 +162,6 @@ implementation{
    }
 
    event void CommandHandler.printUsers(uint16_t address) {
-      call TCP.printUsers(address);
+      call TCP.printUsers();
    }
 }

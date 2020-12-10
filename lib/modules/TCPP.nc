@@ -33,6 +33,7 @@ implementation{
     uint16_t time = 1;
     uint16_t bytesWritten = 1;
     uint8_t *user;
+    uint16_t globalServerAddress = 1;
 
 
     /*
@@ -161,6 +162,7 @@ implementation{
 
             call Transport.appConnect(fd, &server_address, username);
             user = username;
+            globalServerAddress = serverAddress;
 
             if (!call AppConnectionTimer.isRunning()) {
                 call AppConnectionTimer.startPeriodic(1000);
@@ -184,9 +186,9 @@ implementation{
         // send message to the given user
     }
 
-    command void TCP.printUsers(uint16_t address) {
-        uint8_t i;
-        uint8_t *username;
+    command void TCP.printUsers() {
+        // uint8_t i;
+        // uint8_t *username;
         call Transport.printSockets();
 
         // printf("Reply: listUsrRply [%d]", call AcceptedSockets.size());
@@ -300,7 +302,6 @@ implementation{
             printf("in %d seconds\n", time);
             time = 1;
             dbg(TRANSPORT_CHANNEL, "Node %hu's socket %hhu has established a connection to the server\n", TOS_NODE_ID, fd);
-            // call Transport.printSockets();
             call AppClientTimer.startOneShot(CLIENT_WRITE_TIMER);
             call AppConnectionTimer.stop();
             return;

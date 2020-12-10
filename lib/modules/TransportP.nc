@@ -75,6 +75,7 @@ implementation {
         for (i = 1; i <= call Sockets.size(); i++) {
             call Transport.printSocket(i);
         }
+
     }
 
     command socket_t Transport.getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
@@ -294,7 +295,7 @@ implementation {
                         socket.state = SYN_RCVD;
                         socket.dest.addr = packageSource;
                         socket.dest.port = sourcePort;
-                        socket.username = payload;
+                        memcpy(socket.username, payload, sizeof(payload));
 
                         call Sockets.insert(i, socket);
 
@@ -348,7 +349,7 @@ implementation {
                     }
                 }
 
-                // call Transport.printSockets();
+                call Transport.printSockets();
 
                 return SUCCESS;
             case (FIN):
@@ -468,7 +469,7 @@ implementation {
                 socket.dest = *addr;
                 socket.flag = SYN;
                 socket.state = SYN_SENT;
-                socket.username = username;
+                memcpy(socket.username, username, sizeof(username));
 
                 call Sockets.insert(fd, socket);
                 
@@ -580,7 +581,7 @@ implementation {
         socket.src = globalServerSourcePort;
         socket.dest.addr = ROOT_SOCKET_ADDR;
         socket.dest.port = ROOT_SOCKET_PORT;
-        socket.username = "0";
+        socket.username[0] = '0';
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             socket.sendBuff[i] = 0;
