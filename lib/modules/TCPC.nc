@@ -48,6 +48,6 @@ implementation{
      * #######################################
      */
 
-    components new HashmapC(uint8_t *, 10) as AcceptedSocketsC;
+    components new HashmapC(char*, 10) as AcceptedSocketsC;
     TCPP.AcceptedSockets->AcceptedSocketsC;
 }

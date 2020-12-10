@@ -23,7 +23,7 @@ module TCPP{
     uses interface Transport;
 
     // Data Structures
-    uses interface Hashmap<uint8_t*> as AcceptedSockets;
+    uses interface Hashmap<char*> as AcceptedSockets;
 }
 
 implementation{
@@ -60,7 +60,7 @@ implementation{
             socket_address.port = port; 
 
             if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
-                call AcceptedSockets.insert(fd, "0");
+                call AcceptedSockets.insert(fd, '0');
                 
                 if (call Transport.listen(fd) == SUCCESS && !call ServerTimer.isRunning()) {
                     call ServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
@@ -128,7 +128,7 @@ implementation{
             socket_address.port = port; 
 
             if (call Transport.bind(fd, &socket_address) == SUCCESS) { 
-                call AcceptedSockets.insert(fd, "0");
+                call AcceptedSockets.insert(fd, '0');
                 
                 if (call Transport.listen(fd) == SUCCESS && !call ServerTimer.isRunning()) {
                     call AppServerTimer.startPeriodic(ATTEMPT_CONNECTION_TIME);
@@ -187,19 +187,19 @@ implementation{
     }
 
     command void TCP.printUsers() {
-        // uint8_t i;
-        // uint8_t *username;
-        call Transport.printSockets();
+        uint8_t i;
+        char username[128];
+        // call Transport.printSockets();
 
-        // printf("Reply: listUsrRply [%d]", call AcceptedSockets.size());
-        // for (i = 1; i <= call AcceptedSockets.size(); i++) {
-        //     username = call AcceptedSockets.get(i);
+        printf("Reply: listUsrRply ");
+        for (i = 1; i <= call AcceptedSockets.size(); i++) {
+            memcpy(username, call AcceptedSockets.get(i), sizeof(call AcceptedSockets.get(i)));
 
-        //     if (username != (uint8_t*)"0") {
-        //         printf("%s, ", username);
-        //     }
-        // }
-        // printf("\\r\\n\n");
+            if (username != '0') {
+                printf("%s, ", username);
+            }
+        }
+        printf("\\r\\n\n");
     }
 
     /*
@@ -214,7 +214,7 @@ implementation{
         uint16_t buffer[SOCKET_BUFFER_SIZE];
 
         if (newFd != NULL) {
-            call AcceptedSockets.insert(newFd, "0");
+            call AcceptedSockets.insert(newFd, '0');
         }
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
@@ -278,20 +278,20 @@ implementation{
     }
 
     event void AppServerTimer.fired() {
-        socket_t newFd = 0;
-        uint8_t *username = "0";
-        uint8_t i = 0;
+        socket_t newFd = fd;
+        char username[128];
+        uint8_t i;
 
-        if (call AcceptedSockets.size() <= MAX_NUM_OF_SOCKETS) {
+        if (fd < MAX_NUM_OF_SOCKETS) {
             newFd = call Transport.accept(fd);
 
             if (newFd != NULL) {
-                call AcceptedSockets.insert(newFd, "0");
+                call AcceptedSockets.insert(newFd, '0');
                 fd = newFd;
             }   
         } else {
-            for (i; i < MAX_NUM_OF_SOCKETS; i++) {
-                username = call Transport.getUsername(i);
+            for (i = 1; i <= MAX_NUM_OF_SOCKETS; i++) {
+                memcpy(username, call Transport.getUsername(i), sizeof(call Transport.getUsername(i)));
                 call AcceptedSockets.insert(i, username);
             }
         }

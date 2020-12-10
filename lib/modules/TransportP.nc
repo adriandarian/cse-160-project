@@ -75,7 +75,6 @@ implementation {
         for (i = 1; i <= call Sockets.size(); i++) {
             call Transport.printSocket(i);
         }
-
     }
 
     command socket_t Transport.getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
@@ -107,13 +106,16 @@ implementation {
         return FAIL;
     }
 
-    command uint8_t* Transport.getUsername(socket_t fd) {
+    command char* Transport.getUsername(socket_t fd) {
         socket_store_t socket;
+        char tmp[128];
 
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
+            memcpy(tmp, "default", sizeof("default"));
 
-            if (socket.state == ESTABLISHED) {
+            if (socket.username != tmp) {
+                // dbg(APP_CHANNEL, "Socket Username: %s\n", socket.username);
                 return socket.username;
             }
         }
@@ -349,8 +351,6 @@ implementation {
                     }
                 }
 
-                call Transport.printSockets();
-
                 return SUCCESS;
             case (FIN):
                 for (i = 1; i <= call Sockets.size(); i++) {
@@ -581,7 +581,7 @@ implementation {
         socket.src = globalServerSourcePort;
         socket.dest.addr = ROOT_SOCKET_ADDR;
         socket.dest.port = ROOT_SOCKET_PORT;
-        socket.username[0] = '0';
+        memcpy(socket.username, "default", sizeof("default"));
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             socket.sendBuff[i] = 0;
