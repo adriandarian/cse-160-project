@@ -108,16 +108,11 @@ implementation {
 
     command char* Transport.getUsername(socket_t fd) {
         socket_store_t socket;
-        char tmp[128];
 
         if (call Sockets.contains(fd)) {
             socket = call Sockets.get(fd);
-            memcpy(tmp, "default", sizeof("default"));
 
-            if (socket.username != tmp) {
-                // dbg(APP_CHANNEL, "Socket Username: %s\n", socket.username);
-                return socket.username;
-            }
+            return socket.username;
         }
     }
 
@@ -581,7 +576,7 @@ implementation {
         socket.src = globalServerSourcePort;
         socket.dest.addr = ROOT_SOCKET_ADDR;
         socket.dest.port = ROOT_SOCKET_PORT;
-        memcpy(socket.username, "default", sizeof("default"));
+        memcpy(socket.username, "5", sizeof("5"));
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             socket.sendBuff[i] = 0;

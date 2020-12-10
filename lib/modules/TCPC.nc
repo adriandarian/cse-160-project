@@ -50,7 +50,4 @@ implementation{
 
     components new HashmapC(char*, 10) as AcceptedSocketsC;
     TCPP.AcceptedSockets->AcceptedSocketsC;
-
-    components new ListC(char*, 10) as UsernamesC;
-    TCPP.Usernames->UsernamesC;
 }
