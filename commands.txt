@@ -1,4 +1,4 @@
-hello bbridi 80\r\n
+hello bbridi 80\r\nlistusr\r\n
 listusr\r\n
 hello acerpa 90\r\n
 listusr\r\n
