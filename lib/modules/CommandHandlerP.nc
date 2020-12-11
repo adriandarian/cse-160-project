@@ -98,8 +98,8 @@ implementation{
                 break;
 
             case CMD_APP_UNICAST_MESSAGE:
-                dbg(COMMAND_CHANNEL, "Command Type: Whisper Message\n");
-                signal CommandHandler.unicastMessage(msg->dest, &buff[0], &buff[1]);
+                dbg(COMMAND_CHANNEL, "Command Type: Whisper Message to %hu\n", buff[0]);
+                signal CommandHandler.unicastMessage(msg->dest, buff[0], &buff[1]);
                 break;
 
             case CMD_APP_PRINT_USERS:

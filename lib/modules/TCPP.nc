@@ -21,6 +21,8 @@ module TCPP{
     uses interface Timer<TMilli> as AppConnectionTimer;
     uses interface Timer<TMilli> as AppClientTimer;
     uses interface Transport;
+    uses interface LinkState;
+    uses interface SimpleSend as MessageSender;
 
     // Data Structures
     uses interface Hashmap<char*> as AcceptedSockets;
@@ -34,6 +36,7 @@ implementation{
     uint16_t bytesWritten = 1;
     uint8_t *user;
     uint16_t globalServerAddress = 1;
+    pack package;
 
 
     /*
@@ -168,7 +171,7 @@ implementation{
                 call AppConnectionTimer.startPeriodic(1000);
             }
 
-            printf("Establishing Connection");
+            printf("%s established connection", username);
             return;
         }
 
@@ -178,29 +181,49 @@ implementation{
     command void TCP.broadcastMessage(uint16_t address, uint8_t *message) {
         // get a sub list of all sockets with flag 3 and state 2 on server
         // send message to each node with the defined port and address
+        uint8_t i;
+        char username[128];
+
+        for (i = 1; i <= MAX_NUM_OF_SOCKETS; i++) {
+            memcpy(username, call Transport.getUsername(i), sizeof(call Transport.getUsername(i)));
+
+            if (*(username) != '0') {
+                makePack(&package, TOS_NODE_ID, call Transport.getDestinationFromSocketId(i), MAX_TTL, PROTOCOL_CHAT, 0, message, sizeof(message));
+                call MessageSender.send(package, call LinkState.getFromRoutingTable(package.dest));
+            } 
+        }
     }
 
-    command void TCP.unicastMessage(uint16_t address, uint8_t *username, uint8_t *message) {
+    command void TCP.unicastMessage(uint16_t address, uint16_t clientAddress, uint8_t *message) {
         // check if the user has an established socket to the server
         //      this is by flag = 3 state = 2 and username = username
         // send message to the given user
+        // uint16_t destination = call Transport.getDestinationFromSocketUsername((char*)username);
+
+        // if (destination == 99) {
+        //     printf("User does not exist!\n");
+        //     return;
+        // }
+
+        makePack(&package, TOS_NODE_ID, clientAddress, MAX_TTL, PROTOCOL_CHAT, 0, message, sizeof(message));
+        call MessageSender.send(package, call LinkState.getFromRoutingTable(package.dest));
     }
 
     command void TCP.printUsers() {
         uint8_t i;
         char username[128];
 
-        printf("Reply: listUsrRply ");
+        printf("Online Users ");
         for (i = 1; i <= MAX_NUM_OF_SOCKETS; i++) {
             memcpy(username, call Transport.getUsername(i), sizeof(call Transport.getUsername(i)));
 
-            if (*(username) == '5') {
+            if (*(username) == '0') {
                 break;
             } 
 
             printf("%s ", username);
         }
-        printf("\\r\\n\n");
+        printf("\n");
     }
 
     /*

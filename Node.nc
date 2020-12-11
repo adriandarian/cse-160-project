@@ -58,7 +58,6 @@ implementation{
 
    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len) {      
       pack* message = (pack*) payload;
-      TCPPack *tmp = message->payload;
 
       if (len != sizeof(pack)) {
          dbg(GENERAL_CHANNEL, "Unknown Packet Type %u\n", len);
@@ -90,6 +89,17 @@ implementation{
             call Flooding.LSAHandle(message);
             call LinkState.LSHandler(message);
             break;
+         case PROTOCOL_CHAT:
+            if (message->dest == TOS_NODE_ID) {
+               printf("Received Msg: %s on Node Id %hhu\n", message->payload, TOS_NODE_ID);
+            } else {
+               if (call LinkState.checkIfInRoutingTable(message->dest)) {
+                  makePack(&sendPackage, message->src, message->dest, message->TTL - 1, message->protocol, message->seq, message->payload, PACKET_MAX_PAYLOAD_SIZE);
+                  call Sender.send(sendPackage, call LinkState.getFromRoutingTable(message->dest));
+               } else {
+                  call Flooding.pingHandle(message);
+               }
+            }
          default:
             break;
       }
@@ -156,9 +166,9 @@ implementation{
       call TCP.broadcastMessage(address, message);
    }
 
-   event void CommandHandler.unicastMessage(uint16_t address, uint8_t *username, uint8_t *message) {
-      dbg(APP_CHANNEL, "Username: %s, Message: %s\n", username, message);
-      call TCP.unicastMessage(address, username, message);
+   event void CommandHandler.unicastMessage(uint16_t address, uint16_t clientAddress, uint8_t *message) {
+      dbg(APP_CHANNEL, "Username: %hu, Message: %s\n", clientAddress, message);
+      call TCP.unicastMessage(address, clientAddress, message);
    }
 
    event void CommandHandler.printUsers(uint16_t address) {

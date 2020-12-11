@@ -157,14 +157,18 @@ class TestSim:
         self.serverPort = port
         self.sendCMD(self.CMD_APP_SERVER, address, "{0}".format(chr(port)))
 
-    def appClient(self, clientAddress, clientPort, username):
-        self.sendCMD(self.CMD_APP_CLIENT, clientAddress, "{0}{1}{2}{3}".format(chr(self.serverAddress), chr(clientPort), chr(self.serverPort), username))
+    def appClient(self, clientAddress, username, clientPort):
+        self.sendCMD(self.CMD_APP_CLIENT, clientAddress, "{0}{1}{2}{3}".format(
+            chr(self.serverAddress), 
+            chr(int(clientPort)), 
+            chr(self.serverPort), 
+            username))
 
     def broadcastingMessage(self, message):
         self.sendCMD(self.CMD_APP_BROADCAST_MESSAGE, self.serverAddress, "{0}".format(message))
 
-    def uincastMessage(self, username, message):
-        self.sendCMD(self.CMD_APP_UNICAST_MESSAGE, self.serverAddress, "{0}{1}".format(username, message))
+    def uincastMessage(self, clientAddress, message):
+        self.sendCMD(self.CMD_APP_UNICAST_MESSAGE, self.serverAddress, "{0}{1}".format(chr(clientAddress), message))
 
     def printUsers(self):
         self.sendCMD(self.CMD_APP_PRINT_USERS, self.serverAddress, "listusr\r\n")

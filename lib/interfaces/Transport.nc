@@ -22,6 +22,8 @@ interface Transport{
    command socket_t getFd(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort);
    command error_t validateSocketBuffer(socket_t fd);
    command char* getUsername(socket_t fd);
+   command uint16_t getDestinationFromSocketId(socket_t fd);
+   command uint16_t getDestinationFromSocketUsername(char *username);
 
    /**
     * Get a socket if there is one available.

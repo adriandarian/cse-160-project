@@ -11,6 +11,6 @@ interface CommandHandler{
    event void setAppServer(uint16_t address, uint8_t port);
    event void setAppClient(uint16_t clientAddress, uint16_t serverAddress, uint8_t clientPort, uint8_t serverPort, uint8_t *username);
    event void broadcastMessage(uint16_t address, uint8_t *message);
-   event void unicastMessage(uint16_t address, uint8_t *username, uint8_t *message);
+   event void unicastMessage(uint16_t address, uint16_t clientAddress, uint8_t *message);
    event void printUsers(uint16_t address);
 }

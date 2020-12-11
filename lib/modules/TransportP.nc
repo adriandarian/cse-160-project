@@ -116,6 +116,43 @@ implementation {
         }
     }
 
+    command uint16_t Transport.getDestinationFromSocketId(socket_t fd) {
+        socket_store_t socket;
+
+        if (call Sockets.contains(fd)) {
+            socket = call Sockets.get(fd);
+
+            return socket.dest.addr;
+        }
+    }
+
+    command uint16_t Transport.getDestinationFromSocketUsername(char *username) {
+        socket_store_t socket;
+        char name[128];
+        uint8_t i;
+        uint8_t j;
+        bool foundUsername = FALSE;
+
+        for (i = 1; i <= MAX_NUM_OF_SOCKETS; i++) {
+            socket = call Sockets.get(i);
+
+            for (j = 0; j < sizeof(username); j++) {
+                if (*(name + j) != *(username + j)) {
+                    foundUsername = FALSE;
+                    break;
+                } else {
+                    foundUsername = TRUE;
+                }
+            }
+
+            if (foundUsername == TRUE) {
+                return socket.dest.addr;
+            }
+        }
+
+        return 99;
+    }
+
     command socket_t Transport.socket() {
         socket_t fd = 0;
         uint8_t SocketsSize = call Sockets.size();
@@ -576,7 +613,7 @@ implementation {
         socket.src = globalServerSourcePort;
         socket.dest.addr = ROOT_SOCKET_ADDR;
         socket.dest.port = ROOT_SOCKET_PORT;
-        memcpy(socket.username, "5", sizeof("5"));
+        memcpy(socket.username, "0", sizeof("0"));
 
         for (i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             socket.sendBuff[i] = 0;

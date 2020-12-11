@@ -1,0 +1,7 @@
+hello bbridi 80\r\n
+listusr\r\n
+hello acerpa 90\r\n
+listusr\r\n
+msg Hello World\r\n
+whisper acerpa goodbye\r\n
+stop
