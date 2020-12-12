@@ -111,6 +111,9 @@ implementation{
 
     command void TCP.closeClient(uint16_t clientAddress, uint16_t destination, uint8_t sourcePort, uint8_t destinationPort) {
         socket_t tempFd = call Transport.getFd(clientAddress, destination, sourcePort, destinationPort);
+        dbg(APP_CHANNEL, "client addr: %hu, destination: %hu, client port: %hhu, destination port: %hhu\n", clientAddress, destination, sourcePort, destinationPort);
+        dbg(APP_CHANNEL, "Socket Fd: %hhu\n", tempFd);
+        // call Transport.printSockets();
 
         if (tempFd > 0 && tempFd <= MAX_NUM_OF_SOCKETS) {
             call Transport.close(tempFd);

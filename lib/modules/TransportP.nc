@@ -281,7 +281,7 @@ implementation {
         uint8_t seqNum = call Random.rand16() % 1000;
         uint8_t curByte = 0;
         uint8_t recieverBuffer;
-        
+        dbg(APP_CHANNEL, "Flag # %hhu\n", flag);
         switch (flag) {
             case (DATA):
                 for (i = 1; i <= call Sockets.size(); i++) {
@@ -385,21 +385,23 @@ implementation {
 
                 return SUCCESS;
             case (FIN):
+                dbg(APP_CHANNEL, "are these equal %hu == %hu\n", sourcePort, TOS_NODE_ID);
                 for (i = 1; i <= call Sockets.size(); i++) {
                     socket = call Sockets.get(i);
 
                     if (socket.state == ESTABLISHED) {
                         socket.state = LISTEN;
                         socket.flag = FIN_ACK;
-                        call Sockets.insert(i, socket);
+                        memcpy(socket.username, "0", sizeof("0"));
+                        call Sockets.insert(i, socket);                    
+                        
+                        makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, FIN_ACK, advertisementWindow, 0, &payload);
+
+                        makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
+
+                        call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
                         break;
                     }
-
-                    makeTCPPacket(&handshakeTCP, destinationPort, sourcePort, seqNum, ackNum, FIN_ACK, advertisementWindow, 0, &payload);
-
-                    makePack(&handshakePackage, TOS_NODE_ID, packageSource, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
-
-                    call TransportSender.send(handshakePackage, call LinkState.getFromRoutingTable(packageSource));
                 }
 
                 return SUCCESS;
@@ -410,6 +412,7 @@ implementation {
                     if (socket.state == LISTEN && socket.flag == FIN_ACK) {
                         socket.state = CLOSED;
                         socket.flag = FIN;
+                        memcpy(socket.username, "0", sizeof("0"));
                         call Sockets.insert(i, socket);
                         break;
                     }
@@ -526,6 +529,9 @@ implementation {
         if (fd > 0 && fd < MAX_NUM_OF_SOCKETS) {
             if (call Sockets.contains(fd)) {
                 socket = call Sockets.get(fd);
+                memcpy(socket.username, "0", sizeof("0"));
+                call Sockets.insert(fd, socket);
+                socket = call Sockets.get(fd);
                 
                 switch (socket.state) {
                     case ESTABLISHED:
@@ -534,7 +540,6 @@ implementation {
                         makeTCPPacket(&handshakeTCP, TOS_NODE_ID, socket.dest.addr, 0, 0, FIN, 0, 0, buffer);
                         makePack(&handshakePackage, TOS_NODE_ID, socket.dest.addr, MAX_TTL, PROTOCOL_TCP, 0, &handshakeTCP, PACKET_MAX_PAYLOAD_SIZE);
                         call TransportSender.send(dataPackage, call LinkState.getFromRoutingTable(socket.dest.addr));
-
                     default:
                         initSocket(fd, CLOSED);
                 }

@@ -78,7 +78,7 @@ def main():
                     print("Bad argument")
                     break
                 s.runTime(1)
-                s.runTime(600)
+                s.runTime(500)
 
 
 if __name__ == '__main__':
