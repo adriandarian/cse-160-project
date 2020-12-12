@@ -1,5 +1,11 @@
 from TestSim import TestSim
 
+def firstMissingNumber(arr):
+    for x in range(0, len(arr)):
+        if arr[x] == None:
+            return x + 1
+    return len(arr) + 1
+
 def main():
     catalog = {}
 
@@ -27,43 +33,52 @@ def main():
 
     # After sending a ping, simulate a little to prevent collision.
     s.runTime(300)
-    serverNode = 1
-    serverPort = 80
-    s.appServer(serverNode, serverPort) 
-    catalog[serverNode] = (serverPort, "server")
-    s.runTime(60)
+    serverNode = 0
+    serverPort = 255
+    record = [None] * s.numMote
 
-    openNode = 2
     f = open("commands.txt", "r")
     for x in f:
         messages = x.split("\\r\\n")
         for m in messages[:len(messages) - 1]:
             message = m.split(" ")
-            if message[0] == "hello":
-                nodeId = openNode if openNode != 2 else catalog.keys()[-1] + 1
-                if nodeId > s.numMote:
-                    print("There are no more open nodes to establish a conection with\n")
-                    break
-                s.appClient(nodeId, message[1], message[2])
-                catalog[nodeId] = (message[1], message[2])
-            elif message[0] == "msg":
-                s.broadcastingMessage(" ".join(message[1:]))
-            elif message[0] == "whisper":
-                s.uincastMessage([c for c in catalog.keys() if catalog[c][0] == message[1]][0], " ".join(message[2:]))
-            elif message[0] == "listusr":
-                s.printUsers()
-            elif message[0] == "close":
-                s.clientClose(message[1], serverNode, message[2], serverPort)
-                del catalog[message[1]]
-                openNode = message[1]
-            elif message[0] == "stop":
-                print("Closing Server!!!")
-                return
-            else:
-                print("Bad argument")
+            if message[0] == "server":
+                serverNode = int(message[1])
+                serverPort = int(message[2])
+                s.appServer(serverNode, serverPort) 
+                catalog[serverNode] = (serverPort, "server")
+                record[serverNode - 1] = serverNode
+                s.runTime(60)
                 break
-            s.runTime(1)
-            s.runTime(1000)
+            if serverNode > 0 and serverPort < 255:
+                if message[0] == "hello":
+                    nodeId = firstMissingNumber(record)
+                    if nodeId > s.numMote:
+                        print("There are no more open nodes to establish a conection with")
+                        break
+                    s.appClient(nodeId, message[1], message[2])
+                    catalog[nodeId] = (message[1], message[2])
+                    record[nodeId - 1] = nodeId
+                elif message[0] == "msg":
+                    s.broadcastingMessage(" ".join(message[1:]))
+                elif message[0] == "whisper":
+                    s.uincastMessage([c for c in catalog.keys() if catalog[c][0] == message[1]][0], " ".join(message[2:]))
+                elif message[0] == "listusr":
+                    s.printUsers()
+                elif message[0] == "close":
+                    s.clientClose(message[1], serverNode, message[2], serverPort)
+                    del catalog[int(message[1])]
+                    for idx, val in enumerate(record):
+                        if val == int(message[1]):
+                            record[idx] = None
+                elif message[0] == "stop":
+                    print("Closing Server!!!")
+                    return
+                else:
+                    print("Bad argument")
+                    break
+                s.runTime(1)
+                s.runTime(600)
 
 
 if __name__ == '__main__':

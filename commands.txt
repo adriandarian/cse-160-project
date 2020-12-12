@@ -1,7 +1,13 @@
+server 1 80\r\n
 hello bbridi 80\r\nlistusr\r\n
 listusr\r\n
-hello acerpa 90\r\n
+hello acerpa 80\r\n
+hello adarian 80\r\n
 listusr\r\n
 msg Hello World\r\n
 whisper acerpa goodbye\r\n
+close 2 80\r\n
+listusr\r\n
+hello adarian 80\r\n
+listusr\r\n
 stop

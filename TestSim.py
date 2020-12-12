@@ -150,7 +150,7 @@ class TestSim:
         self.sendCMD(self.CMD_TEST_CLIENT, clientAddress, "{0}{1}{2}{3}{4}".format(chr(destination), chr(sourcePort), chr(destinationPort), chr(transfer >> 8), chr(transfer & 0xFF)))
 
     def clientClose(self, clientAddress, destination, sourcePort, destinationPort):
-        self.sendCMD(self.CMD_CLIENT_CLOSE, clientAddress, "{0}{1}{2}".format(chr(destination), chr(sourcePort), chr(destinationPort)))
+        self.sendCMD(self.CMD_CLIENT_CLOSE, int(clientAddress), "{0}{1}{2}".format(chr(destination), chr(int(sourcePort)), chr(int(destinationPort))))
 
     def appServer(self, address, port):
         self.serverAddress = address
@@ -158,11 +158,7 @@ class TestSim:
         self.sendCMD(self.CMD_APP_SERVER, address, "{0}".format(chr(port)))
 
     def appClient(self, clientAddress, username, clientPort):
-        self.sendCMD(self.CMD_APP_CLIENT, clientAddress, "{0}{1}{2}{3}".format(
-            chr(self.serverAddress), 
-            chr(int(clientPort)), 
-            chr(self.serverPort), 
-            username))
+        self.sendCMD(self.CMD_APP_CLIENT, clientAddress, "{0}{1}{2}{3}".format(chr(self.serverAddress), chr(int(clientPort)), chr(self.serverPort), username))
 
     def broadcastingMessage(self, message):
         self.sendCMD(self.CMD_APP_BROADCAST_MESSAGE, self.serverAddress, "{0}".format(message))

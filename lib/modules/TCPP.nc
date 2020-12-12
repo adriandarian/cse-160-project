@@ -298,6 +298,7 @@ implementation{
     }
 
     event void CloseTimer.fired() {
+        printf("Closed the connection between server and Node Id %hu\n", TOS_NODE_ID);
         return;
     }
 
